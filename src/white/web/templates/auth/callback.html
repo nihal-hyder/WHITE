@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Completing sign-in{% endblock %}
+{% block content %}
+<div class="narrow panel">
+  <h1>Completing sign-in…</h1>
+  <p id="callback-status" role="status">Please wait while we confirm your link.</p>
+  <p class="small"><a href="/login">Go to sign in</a></p>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/auth-callback.js') }}"></script>{% endblock %}

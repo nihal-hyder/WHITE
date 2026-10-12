@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Website security assessment{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Understand your website's security, in plain English.</h1>
+  <p>WHITE checks a website you own for common security weaknesses, explains each finding in business terms, and tells you what to do next. Technical evidence is included for your IT team.</p>
+  <p class="actions">
+    {% if user %}<a class="btn" href="/scans/new">Start a scan</a><a class="btn btn-secondary" href="/dashboard">Go to dashboard</a>
+    {% elif auth_mode == 'supabase' %}<a class="btn" href="/signup">Create an account</a><a class="btn btn-secondary" href="/login">Sign in</a>
+    {% endif %}
+  </p>
+</section>
+<div class="grid grid-2 mt-24">
+  <section class="panel">
+    <h2>What WHITE checks</h2>
+    <ul class="feature-list">
+      <li>Whether the connection is encrypted (HTTPS, certificate, redirects, HSTS)</li>
+      <li>Browser protections such as Content-Security-Policy and clickjacking defences</li>
+      <li>Cookie protections (Secure, HttpOnly, SameSite)</li>
+      <li>Accidental exposure of error details, server versions and well-known sensitive files</li>
+      <li>Insecure forms, mixed content, robots.txt and sitemap entries</li>
+      <li>Optional, harmless input-handling indicators for sites you explicitly authorize</li>
+    </ul>
+    <p class="small muted mt-12">{{ checks|length }} checks in total.</p>
+  </section>
+  <section class="panel">
+    <h2>What WHITE does not do</h2>
+    <ul class="feature-list">
+      <li>It does not guarantee that a website is secure or detect every vulnerability.</li>
+      <li>It does not log in, guess passwords, submit forms or attempt exploitation.</li>
+      <li>It only inspects publicly reachable responses, with strict request and time limits.</li>
+      <li>It refuses private, local and cloud-internal network addresses.</li>
+    </ul>
+    <p class="small muted mt-12">Only scan websites you own or have written permission to assess.</p>
+  </section>
+</div>
+{% endblock %}

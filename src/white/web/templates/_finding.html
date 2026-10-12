@@ -1,0 +1,28 @@
+{% from "_macros.html" import sev_badge %}
+<article class="finding" id="f-{{ f.id }}">
+  <div class="finding-head">
+    {{ sev_badge(f.severity.value, f.severity.label) }}
+    <h3>{{ f.title }}</h3>
+    {% if f.id in new_ids %}<span class="tag-new">NEW</span>{% endif %}
+  </div>
+  <div class="small muted">{{ 'Confirmed observation' if f.status.value == 'FINDING' else 'Possible issue - needs manual confirmation' }}
+    · Confidence: {{ f.confidence.value|lower }} · {{ f.category.label }}</div>
+  <dl>
+    <dt>What we found</dt><dd>{{ f.summary }}</dd>
+    <dt>Why it matters</dt><dd>{{ f.business_impact }}</dd>
+    <dt>What to do</dt><dd>{{ f.recommendation }}</dd>
+  </dl>
+  <details>
+    <summary>Technical details for IT staff</summary>
+    {% if f.affected_url %}<p>Affected URL: <code>{{ f.affected_url }}</code></p>{% endif %}
+    <p>{{ f.technical_details }}</p>
+    <p><strong>Technical remediation:</strong> {{ f.technical_remediation }}</p>
+    {% if f.evidence %}
+    <div class="table-wrap"><table class="evidence"><caption class="sr-only">Evidence</caption>
+      <thead><tr><th scope="col">Evidence</th><th scope="col">Observed value</th></tr></thead>
+      <tbody>{% for e in f.evidence %}<tr><td>{{ e.label }}</td><td class="mono">{{ e.value }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    <p class="small muted mt-12">Check {{ f.check_id }} v{{ f.check_version }}{% if f.owasp %} · {{ f.owasp }}{% endif %} · <a href="/scans/{{ report.scan_id }}/findings/{{ f.id }}">Open finding page</a></p>
+  </details>
+</article>

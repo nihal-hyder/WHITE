@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sev_badge, data_table, aria_series %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Security overview</h1>
+    <p>Based only on scans you have run.{% if data.target %} Showing <strong>{{ data.target }}</strong>.{% endif %}</p>
+  </div>
+  <div class="actions">
+    {% if data.targets|length > 1 %}
+    <form method="get" action="/dashboard" class="actions">
+      <label for="target" class="sr-only">Website</label>
+      <select id="target" name="target">
+        {% for t in data.targets %}<option value="{{ t }}" {% if t == data.target %}selected{% endif %}>{{ t }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-secondary" type="submit">Show</button>
+    </form>
+    {% endif %}
+    <a class="btn" href="/scans/new{% if data.target %}?url={{ data.target|urlencode }}{% endif %}">New scan</a>
+  </div>
+</div>
+
+{% if not data.targets %}
+<div class="empty">
+  <h2>No scans yet</h2>
+  <p>Run your first scan to see findings, priorities and recommended actions here.</p>
+  <p><a class="btn" href="/scans/new">Start a scan</a></p>
+</div>
+{% elif not data.latest %}
+<div class="empty">
+  <h2>No completed scan for this website yet</h2>
+  {% if data.latest_attempt %}
+  <p>The most recent attempt ended with status <span class="st st-{{ data.latest_attempt.state }}">{{ data.latest_attempt.state|replace('_', ' ') }}</span>.</p>
+  <p><a class="btn btn-secondary" href="/scans/{{ data.latest_attempt.scan_id }}">View that scan</a></p>
+  {% else %}
+  <p>Scans that are still running or that did not finish are listed in <a href="/history">Scan history</a>.</p>
+  {% endif %}
+</div>
+{% else %}
+{% set l = data.latest %}
+<section class="grid grid-4" aria-label="Key figures">
+  <div class="panel">
+    <div class="stat-label">Most recent scan</div>
+    <div><strong>{{ l.hostname }}</strong></div>
+    <div class="stat-note">{{ l.date_label }}</div>
+    <div class="stat-note"><span class="st st-{{ l.state }}">{{ l.state|replace('_', ' ') }}</span></div>
+  </div>
+  <div class="panel">
+    <div class="stat-label">Findings recorded</div>
+    <div class="stat-value">{{ l.findings_total }}</div>
+    <div class="stat-note">
+      {% if data.previous %}{% set d = l.findings_total - data.previous.findings_total %}
+        {% if d < 0 %}{{ -d }} fewer than the previous scan ({{ data.previous.date_label }}){% elif d > 0 %}{{ d }} more than the previous scan ({{ data.previous.date_label }}){% else %}Same as the previous scan ({{ data.previous.date_label }}){% endif %}
+      {% else %}First completed scan of this website{% endif %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="stat-label">High-priority issues</div>
+    <div class="stat-value">{{ l.high_priority }}</div>
+    <div class="stat-note">Critical and high severity combined</div>
+  </div>
+  <div class="panel">
+    <div class="stat-label">Checks completed</div>
+    <div class="stat-value">{{ l.checks_completed }}<span class="muted small"> / {{ l.checks_total }}</span></div>
+    <div class="stat-note">Skipped or failed checks are not counted</div>
+  </div>
+</section>
+
+<section class="panel assessment tone-{{ l.tone }} mt-24">
+  <div class="panel-head"><h2>{{ l.assessment }}</h2><a href="/scans/{{ l.scan_id }}">Open full report</a></div>
+  <p>{{ l.summary }}</p>
+  {% if data.comparison %}
+  <p class="small muted">Compared with the previous scan: {{ data.comparison.new }} new, {{ data.comparison.unresolved }} still present, {{ data.comparison.fixed }} no longer detected, {{ data.comparison.unverified }} not re-verified.</p>
+  {% endif %}
+</section>
+
+<div class="grid grid-2 mt-24">
+  <section class="panel">
+    <h2>Findings by severity</h2>
+    {% if l.findings_total %}
+    <div class="chart-box small"><canvas id="chart-severity" role="img" aria-label="Doughnut chart of findings by severity: {{ aria_series(data.severity) }}"></canvas></div>
+    {{ data_table(data.severity, "Severity", "Findings") }}
+    {% else %}<div class="empty">No findings were recorded in this scan.</div>{% endif %}
+  </section>
+  <section class="panel">
+    <h2>Findings by category</h2>
+    {% if l.findings_total %}
+    <div class="chart-box small"><canvas id="chart-category" role="img" aria-label="Bar chart of findings by category: {{ aria_series(data.categories) }}"></canvas></div>
+    {{ data_table(data.categories, "Category", "Findings") }}
+    {% else %}<div class="empty">No findings were recorded in this scan.</div>{% endif %}
+  </section>
+</div>
+
+<div class="grid grid-2 mt-24">
+  <section class="panel">
+    <h2>Progress over time</h2>
+    {% if data.trend.enough_data %}
+    <div class="chart-box"><canvas id="chart-trend" role="img" aria-label="Line chart of findings across {{ data.trend.points|length }} completed scans"></canvas></div>
+    <details><summary>Show data as a table</summary><div class="table-wrap"><table>
+      <thead><tr><th scope="col">Scan</th><th scope="col">Total</th><th scope="col">New</th><th scope="col">Still present</th><th scope="col">No longer detected</th><th scope="col">Not re-verified</th></tr></thead>
+      <tbody>{% for p in data.trend.points %}<tr><td><a href="/scans/{{ p.scan_id }}">{{ p.label }}</a></td><td>{{ p.total }}</td><td>{{ '-' if p.baseline else p.new }}</td><td>{{ '-' if p.baseline else p.unresolved }}</td><td>{{ '-' if p.baseline else p.fixed }}</td><td>{{ '-' if p.baseline else p.unverified }}</td></tr>{% endfor %}</tbody>
+    </table></div></details>
+    <p class="small muted mt-12">The first scan is the baseline. "No longer detected" is only counted when the same check completed in the later scan; otherwise the issue is shown as "not re-verified".</p>
+    {% else %}
+    <div class="empty"><p>Trends need at least two completed scans of the same website address. Run another scan after making changes to see what improved.</p></div>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <h2>Scan coverage</h2>
+    <div class="chart-box"><canvas id="chart-coverage" role="img" aria-label="Bar chart of check outcomes: {{ aria_series(data.coverage) }}"></canvas></div>
+    {{ data_table(data.coverage, "Outcome", "Checks") }}
+    <p class="small muted mt-12">"Passed" means only that the specific issue was not detected; it is not a guarantee of security.</p>
+  </section>
+</div>
+
+<section class="panel mt-24">
+  <h2>What to do next</h2>
+  {% if data.actions %}
+  <ol class="action-list">
+    {% for a in data.actions %}
+    <li><div>
+      <div class="finding-head">{{ sev_badge(a.severity, a.severity_label) }} <strong>{{ a.title }}</strong>
+        {% if a.status != 'FINDING' %}<span class="small muted">possible issue, confirm first</span>{% endif %}</div>
+      <div>{{ a.action }}</div>
+      <div class="small muted">Why: {{ a.why }}</div>
+      <div class="small"><a href="/scans/{{ l.scan_id }}/findings/{{ a.finding_id }}">Details and evidence</a></div>
+    </div></li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>No actions are needed based on the checks that ran. Keep software up to date and scan again after changes.</p>
+  {% endif %}
+</section>
+<script id="chart-data" type="application/json">{{ chart_json|safe }}</script>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', path='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', path='js/charts.js') }}"></script>
+{% endblock %}

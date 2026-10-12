@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sev_badge %}
+{% block title %}{{ finding.title }}{% endblock %}
+{% block content %}
+<div class="medium">
+  <p class="small"><a href="/scans/{{ report.scan_id }}">← Back to the report for {{ report.hostname }}</a></p>
+  <div class="finding-head">{{ sev_badge(finding.severity.value, finding.severity.label) }}
+    <span class="st st-{{ finding.status.value }}">{{ 'Confirmed observation' if finding.status.value == 'FINDING' else 'Possible issue' }}</span></div>
+  <h1>{{ finding.title }}</h1>
+  <p class="small muted">Observed {{ finding.timestamp|dt }} · {{ finding.category.label }}</p>
+
+  <section class="panel mt-24">
+    <h2>What was detected</h2>
+    <p>{{ finding.summary }}</p>
+    <h2 class="mt-24">Why it matters</h2>
+    <p>{{ finding.business_impact }}</p>
+    <h2 class="mt-24">What to do</h2>
+    <p>{{ finding.recommendation }}</p>
+    {% if finding.status.value == 'POTENTIAL' %}<div class="alert alert-warn">This is an indicator, not a confirmed vulnerability. Ask a qualified person to confirm it before acting.</div>{% endif %}
+  </section>
+
+  <section class="panel mt-24">
+    <h2>Severity and confidence</h2>
+    <dl class="kv">
+      <dt>Severity</dt><dd>{{ finding.severity.label }} - the potential impact if the issue is real and exploited.</dd>
+      <dt>Confidence</dt><dd>{{ finding.confidence.value|title }} - how certain WHITE is that the observation is accurate.</dd>
+      {% if finding.owasp %}<dt>Risk category</dt><dd>{{ finding.owasp }} (OWASP Top 10:2025)</dd>{% endif %}
+    </dl>
+  </section>
+
+  <section class="panel mt-24">
+    <h2>Supporting evidence</h2>
+    {% if finding.evidence %}
+    <div class="table-wrap"><table class="evidence">
+      <thead><tr><th scope="col">Evidence</th><th scope="col">Observed value</th></tr></thead>
+      <tbody>{% for e in finding.evidence %}<tr><td>{{ e.label }}</td><td class="mono">{{ e.value }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="small muted mt-12">Sensitive values such as cookie contents, tokens and passwords are redacted.</p>
+    {% else %}<p>No additional evidence was recorded.</p>{% endif %}
+    <details>
+      <summary>Technical details</summary>
+      <dl class="kv">
+        {% if finding.affected_url %}<dt>Affected URL</dt><dd class="mono">{{ finding.affected_url }}</dd>{% endif %}
+        <dt>Observed behaviour</dt><dd>{{ finding.technical_details }}</dd>
+        <dt>Technical remediation</dt><dd>{{ finding.technical_remediation }}</dd>
+        <dt>Check</dt><dd>{{ finding.check_id }} (version {{ finding.check_version }})</dd>
+        <dt>Finding ID</dt><dd class="mono">{{ finding.id }}</dd>
+        {% if finding.references %}<dt>References</dt><dd>{% for r in finding.references %}<a href="{{ r.url }}" rel="noopener noreferrer" target="_blank">{{ r.title }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
+      </dl>
+    </details>
+  </section>
+</div>
+{% endblock %}

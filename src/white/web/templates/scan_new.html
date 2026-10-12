@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}New scan{% endblock %}
+{% block content %}
+<div class="medium">
+  <div class="page-head"><div><h1>Start a new scan</h1>
+    <p>Enter the address of a website you own or are authorized to assess.</p></div></div>
+  {% if error %}<div class="alert alert-error" role="alert">{{ error }}
+    {% if error_code == 'domain_unverified' %} <a href="/domains">Go to Domains</a>{% endif %}</div>{% endif %}
+  <form method="post" action="/scans" class="panel" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="field">
+      <label for="url">Website address</label>
+      <input id="url" name="url" type="text" inputmode="url" autocomplete="url" placeholder="https://www.example.com"
+             value="{{ url }}" required maxlength="2048" aria-describedby="url-hint">
+      <div id="url-hint" class="hint">Only http:// and https:// addresses on standard web ports. Private and local network addresses are refused.</div>
+    </div>
+    {% if domain_verification %}
+    <div class="alert alert-info small">Domain ownership verification is required.
+      {% if verified_domains %}Verified: {% for d in verified_domains %}<strong>{{ d.hostname }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}.
+      {% else %}You have not verified any domains yet. <a href="/domains">Verify a domain</a> first.{% endif %}</div>
+    {% endif %}
+    <div class="field">
+      <label class="check"><input type="checkbox" name="authorized" value="yes" required>
+        <span>I confirm that I own this website or have explicit permission from its owner to assess it.</span></label>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" name="active_checks" value="yes" {% if active_checked %}checked{% endif %}>
+        <span>Include active input checks <span class="hint">(optional) Sends a few harmless test values in the page address to look for signs of cross-site scripting or database errors. Never submits forms or changes data.</span></span></label>
+    </div>
+    <button class="btn" type="submit">Start scan</button>
+  </form>
+
+  <section class="panel mt-24">
+    <h2>What happens during a scan</h2>
+    <p>WHITE makes a limited number of ordinary web requests (at most 40, within 2 minutes) and inspects the responses. It runs {{ checks|length }} checks:</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Check</th><th scope="col">What it looks at</th></tr></thead>
+      <tbody>{% for c in checks %}<tr><td>{{ c.name }}{% if c.active %} <span class="small muted">(optional)</span>{% endif %}</td><td>{{ c.description }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+</div>
+{% endblock %}

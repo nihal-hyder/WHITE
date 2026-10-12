@@ -1,0 +1,18 @@
+{% macro sev_badge(sev, label=None) -%}
+<span class="badge sev-{{ sev }}">{{ label or (sev|title if sev != 'INFO' else 'Informational') }}</span>
+{%- endmacro %}
+
+{% macro data_table(series, caption, unit) -%}
+<details>
+  <summary>Show data as a table</summary>
+  <div class="table-wrap"><table>
+    <caption class="sr-only">{{ caption }}</caption>
+    <thead><tr><th scope="col">{{ caption }}</th><th scope="col">{{ unit }}</th></tr></thead>
+    <tbody>{% for i in range(series.labels|length) %}<tr><td>{{ series.labels[i] }}</td><td>{{ series['values'][i] }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</details>
+{%- endmacro %}
+
+{% macro aria_series(series) -%}
+{% for i in range(series.labels|length) %}{{ series.labels[i] }} {{ series['values'][i] }}{% if not loop.last %}, {% endif %}{% endfor %}
+{%- endmacro %}

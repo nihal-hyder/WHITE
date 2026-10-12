@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <title>{% block title %}WHITE{% endblock %} · WHITE</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/">WH<span>I</span>TE</a>
+    {% if user %}
+    <nav class="nav" aria-label="Main">
+      <a href="/dashboard" {% if active == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+      <a href="/scans/new" {% if active == 'new' %}aria-current="page"{% endif %}>New scan</a>
+      <a href="/history" {% if active == 'history' %}aria-current="page"{% endif %}>Scan history</a>
+      {% if domain_verification %}<a href="/domains" {% if active == 'domains' %}aria-current="page"{% endif %}>Domains</a>{% endif %}
+      <a href="/settings" {% if active == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+    </nav>
+    <div class="account">
+      <span title="Signed in as">{{ user.email }}</span>
+      {% if not user.is_local %}
+      <form method="post" action="/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <button type="submit" class="btn btn-secondary">Sign out</button>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <nav class="nav" aria-label="Main"></nav>
+    <div class="account">
+      {% if auth_mode == 'supabase' %}
+      <a href="/login">Sign in</a>
+      <a class="btn" href="/signup">Create account</a>
+      {% else %}
+      <a class="btn" href="/dashboard">Open dashboard</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</header>
+<main id="main">
+  {% set message = flash(request) %}
+  {% if message %}<div class="alert alert-{{ message[0] }}" role="status">{{ message[1] }}</div>{% endif %}
+  {% if user and user.is_local and active == 'dashboard' %}
+  <div class="alert alert-info">Local mode: accounts are disabled because Supabase is not configured. Scan history is stored on this computer only.</div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer>
+  <div>WHITE {{ app_version }} · Only assess websites you own or are authorized to test. Results are observations from limited, non-intrusive checks and are not a guarantee of security.</div>
+</footer>
+<script src="{{ url_for('static', path='js/confirm.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

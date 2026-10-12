@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Scan of {{ record.hostname }}{% endblock %}
+{% block content %}
+<div class="medium">
+  <div class="page-head"><div><h1>Scan of {{ record.hostname }}</h1>
+    <p class="mono">{{ record.target_url }}</p></div></div>
+  <section class="panel" id="scan-progress" data-scan-id="{{ record.id }}" aria-live="polite">
+    <dl class="kv">
+      <dt>Status</dt><dd><span id="progress-state" class="st st-{{ status.state }}">{{ status.state|replace('_', ' ') }}</span></dd>
+      <dt>Current stage</dt><dd id="progress-stage">{{ status.stage }}</dd>
+      <dt>Checks</dt><dd id="progress-counts">{% if status.total_checks %}{{ status.completed_checks }} of {{ status.total_checks }} checks completed{% else %}Waiting for the scan to start{% endif %}</dd>
+      <dt>Elapsed time</dt><dd id="progress-elapsed">{{ '%.1f'|format(status.elapsed_seconds or 0) }} seconds</dd>
+      <dt>Started</dt><dd>{{ record.created_at|dt }}</dd>
+    </dl>
+    {% if not finished %}
+    <div class="progress-track mt-24" id="progress-track" role="progressbar" aria-label="Checks completed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    {% endif %}
+    <div class="alert alert-error mt-24" id="progress-error" role="alert" {% if not status.error %}hidden{% endif %}>{{ status.error or '' }}</div>
+    <div class="actions mt-24">
+      {% if not finished %}
+      <form method="post" action="/scans/{{ record.id }}/cancel">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <button class="btn btn-secondary" type="submit">Cancel scan</button>
+      </form>
+      {% else %}
+      <a class="btn" href="/scans/new?url={{ record.target_url|urlencode }}">Try again</a>
+      <form method="post" action="/scans/{{ record.id }}/delete" data-confirm="Delete this scan record permanently?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <button class="btn btn-danger" type="submit">Delete this record</button>
+      </form>
+      {% endif %}
+      <a href="/history">Back to scan history</a>
+    </div>
+  </section>
+  {% if finished %}<p class="small muted mt-12">This scan did not produce a report, so no findings are shown.</p>{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}{% if not finished %}<script src="{{ url_for('static', path='js/progress.js') }}"></script>{% endif %}{% endblock %}

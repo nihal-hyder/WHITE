@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Scan history{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Scan history</h1><p>All scans in your account, newest first.</p></div>
+  <a class="btn" href="/scans/new">New scan</a>
+</div>
+{% if rows %}
+<div class="panel table-wrap">
+  <table>
+    <thead><tr><th scope="col">Website</th><th scope="col">Date</th><th scope="col">Status</th><th scope="col">Findings</th><th scope="col">High priority</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+    {% for row in rows %}{% set r = row.record %}
+      <tr>
+        <td><strong>{{ r.hostname }}</strong><div class="small muted mono">{{ r.target_url }}</div></td>
+        <td>{{ r.created_at|dt }}</td>
+        <td><span class="st st-{{ row.state }}">{{ row.state|replace('_', ' ') }}</span></td>
+        <td>{% if row.state in ['completed', 'completed_with_errors'] %}{{ r.findings_total }}{% else %}-{% endif %}</td>
+        <td>{% if row.state in ['completed', 'completed_with_errors'] %}{{ r.high_priority }}{% else %}-{% endif %}</td>
+        <td><a href="/scans/{{ r.id }}">{% if row.state in ['queued', 'running'] %}View progress{% else %}View report{% endif %}</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty"><h2>No scans yet</h2><p>Your completed and running scans will appear here.</p><p><a class="btn" href="/scans/new">Start a scan</a></p></div>
+{% endif %}
+{% endblock %}

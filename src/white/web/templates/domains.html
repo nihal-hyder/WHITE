@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Domains{% endblock %}
+{% block content %}
+<div class="medium">
+  <div class="page-head"><div><h1>Domain ownership</h1>
+    <p>Prove that you control a domain before WHITE will scan it.</p></div></div>
+  {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/domains" class="panel" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="field"><label for="hostname">Domain</label>
+      <input id="hostname" name="hostname" type="text" placeholder="example.com" required maxlength="253"></div>
+    <button class="btn" type="submit">Add domain</button>
+  </form>
+
+  {% for d in domains %}
+  <section class="panel mt-24">
+    <div class="panel-head">
+      <h2>{{ d.hostname }}</h2>
+      {% if d.verified_at %}<span class="st st-PASS">Verified ({{ d.method|upper }}) {{ d.verified_at|dt }}</span>{% else %}<span class="st st-POTENTIAL">Not verified</span>{% endif %}
+    </div>
+    {% if not d.verified_at %}
+    <p>Use <strong>one</strong> of these methods, then select "Check verification".</p>
+    <h3>Option 1: DNS TXT record (covers subdomains)</h3>
+    <dl class="kv">
+      <dt>Record type</dt><dd>TXT</dd>
+      <dt>Name / host</dt><dd class="mono">{{ d.txt_name }}</dd>
+      <dt>Value</dt><dd class="mono">{{ d.txt_value }}</dd>
+    </dl>
+    <h3 class="mt-24">Option 2: Verification file (this exact hostname only)</h3>
+    <dl class="kv">
+      <dt>File address</dt><dd class="mono">{{ d.file_url }}</dd>
+      <dt>File contents</dt><dd class="mono">{{ d.token }}</dd>
+    </dl>
+    {% endif %}
+    <div class="actions mt-24">
+      {% if not d.verified_at %}
+      <form method="post" action="/domains/{{ d.id }}/verify">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <button class="btn" type="submit">Check verification</button>
+      </form>
+      {% else %}
+      <a class="btn" href="/scans/new?url=https://{{ d.hostname }}">Scan {{ d.hostname }}</a>
+      {% endif %}
+      <form method="post" action="/domains/{{ d.id }}/delete" data-confirm="Remove this domain? You will need to verify it again to scan it.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <button class="btn btn-danger" type="submit">Remove</button>
+      </form>
+    </div>
+  </section>
+  {% else %}
+  <div class="empty mt-24">No domains added yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

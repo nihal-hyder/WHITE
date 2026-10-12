@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sev_badge, data_table, aria_series %}
+{% block title %}Report for {{ report.hostname }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Security report: {{ report.hostname }}</h1>
+    <p class="small">Scanned {{ report.started_at|dt }} · {{ '%.1f'|format(report.duration_seconds or 0) }} seconds ·
+      <span class="st st-{{ report.state.value }}">{{ report.state.value|replace('_', ' ') }}</span></p>
+    <p class="small mono">{{ report.target_url }}{% if report.final_url and report.final_url != report.target_url %} → {{ report.final_url }}{% endif %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/scans/{{ report.scan_id }}/report.pdf">Download PDF</a>
+    <a class="btn btn-secondary" href="/scans/{{ report.scan_id }}/report.json">JSON</a>
+    <a class="btn btn-secondary" href="/scans/{{ report.scan_id }}/report.html">HTML</a>
+  </div>
+</div>
+
+<section class="panel assessment tone-{{ tone }}">
+  <h2>{{ assessment }}</h2>
+  <p>{{ summary_text }}</p>
+  {% if comparison.available %}{% set c = comparison.counts() %}
+  <p class="small muted">Compared with the previous scan of this address: {{ c.new }} new, {{ c.unresolved }} still present, {{ c.fixed }} no longer detected, {{ c.unverified }} not re-verified.</p>
+  {% endif %}
+</section>
+
+{% set sev = report.summary.severity_counts %}
+<section class="grid grid-4 mt-24" aria-label="Findings by severity">
+  <div class="panel"><div class="stat-label">Critical</div><div class="stat-value">{{ sev.CRITICAL }}</div></div>
+  <div class="panel"><div class="stat-label">High</div><div class="stat-value">{{ sev.HIGH }}</div></div>
+  <div class="panel"><div class="stat-label">Medium</div><div class="stat-value">{{ sev.MEDIUM }}</div></div>
+  <div class="panel"><div class="stat-label">Low / informational</div><div class="stat-value">{{ sev.LOW + sev.INFO }}</div></div>
+</section>
+
+{% if report.summary.findings_total %}
+<div class="grid grid-2 mt-24">
+  <section class="panel"><h2>Findings by severity</h2>
+    <div class="chart-box small"><canvas id="chart-severity" role="img" aria-label="Doughnut chart of findings by severity"></canvas></div></section>
+  <section class="panel"><h2>Findings by category</h2>
+    <div class="chart-box small"><canvas id="chart-category" role="img" aria-label="Bar chart of findings by category"></canvas></div></section>
+</div>
+{% endif %}
+
+<section class="panel mt-24">
+  <h2>Recommended next steps</h2>
+  {% if actions %}
+  <ol class="action-list">{% for a in actions %}
+    <li><div><div class="finding-head">{{ sev_badge(a.severity, a.severity_label) }} <a href="#f-{{ a.finding_id }}"><strong>{{ a.title }}</strong></a>
+      {% if a.status != 'FINDING' %}<span class="small muted">confirm first</span>{% endif %}</div>
+      <div>{{ a.action }}</div></div></li>{% endfor %}
+  </ol>
+  {% else %}<p>No actions are needed based on the checks that ran.</p>{% endif %}
+</section>
+
+<section class="mt-24">
+  <h2>Findings</h2>
+  {% for sevkey, items in groups %}{% if items %}
+  <h3 class="mt-24">{{ sevkey.label }} ({{ items|length }})</h3>
+  {% for f in items %}{% include "_finding.html" %}{% endfor %}
+  {% endif %}{% endfor %}
+  {% if not report.findings %}<div class="empty">No findings were recorded by the checks that ran.</div>{% endif %}
+</section>
+
+<section class="panel mt-24">
+  <h2>Checks performed</h2>
+  {% set sc = report.summary.status_counts %}
+  <p class="small">{{ sc.PASS }} passed · {{ sc.FINDING }} with issues · {{ sc.POTENTIAL }} possible issues · {{ sc.INCONCLUSIVE }} inconclusive · {{ sc.NOT_APPLICABLE }} not applicable · {{ sc.NOT_TESTED }} skipped · {{ sc.ERROR }} failed</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Check</th><th scope="col">Outcome</th><th scope="col">Details</th></tr></thead>
+    <tbody>{% for c in report.checks %}<tr><td>{{ c.name }}</td><td><span class="st st-{{ c.status.value }}">{{ status_labels[c.status] }}</span></td>
+      <td>{{ c.message }}{% for e in c.errors %}<div class="small muted">{{ e }}</div>{% endfor %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% for e in report.errors %}<div class="alert alert-warn mt-12">{{ e }}</div>{% endfor %}
+</section>
+
+<section class="panel mt-24">
+  <h2>Limitations of this assessment</h2>
+  <ul>{% for l in report.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+  <p class="small muted">Severity describes the potential impact of an issue; confidence describes how certain WHITE is about the observation. Scan ID {{ report.scan_id }} · WHITE {{ report.tool_version }} · schema {{ report.schema_version }}.</p>
+  <form method="post" action="/scans/{{ report.scan_id }}/delete" class="mt-12" data-confirm="Delete this scan and its report permanently?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <button class="btn btn-danger" type="submit">Delete this scan</button>
+  </form>
+</section>
+<script id="chart-data" type="application/json">{{ chart_json|safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', path='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', path='js/charts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="medium">
+  <div class="page-head"><div><h1>Account settings</h1></div></div>
+  {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+  <section class="panel">
+    <h2>Account</h2>
+    <dl class="kv">
+      <dt>Signed in as</dt><dd>{{ user.email }}</dd>
+      <dt>Account type</dt><dd>{% if user.is_local %}Local mode (no account; data stays on this computer){% else %}WHITE account (Supabase Auth){% endif %}</dd>
+      <dt>Stored scans</dt><dd>{{ scan_count }}</dd>
+      <dt>Domain verification</dt><dd>{{ 'Required before scanning' if domain_verification else 'Not required (authorization confirmation only)' }}</dd>
+    </dl>
+  </section>
+
+  {% if not user.is_local %}
+  <section class="panel mt-24">
+    <h2>Change password</h2>
+    <form method="post" action="/settings/password" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <div class="field"><label for="password">New password <span class="hint">At least 8 characters.</span></label>
+        <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required></div>
+      <div class="field"><label for="confirm_password">Confirm new password</label>
+        <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></div>
+      <button class="btn" type="submit">Update password</button>
+    </form>
+  </section>
+  <section class="panel mt-24">
+    <h2>Sessions</h2>
+    <p>Sign out of WHITE on every device and browser where you are signed in.</p>
+    <form method="post" action="/settings/sign-out-everywhere">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <button class="btn btn-secondary" type="submit">Sign out everywhere</button>
+    </form>
+  </section>
+  {% else %}
+  <section class="panel mt-24">
+    <h2>Enable accounts</h2>
+    <p>To use sign-in, password recovery and cloud-stored history, configure Supabase as described in <code>docs/SUPABASE_SETUP.md</code> and restart WHITE.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

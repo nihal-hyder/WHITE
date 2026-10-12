@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Choose a new password{% endblock %}
+{% block content %}
+<div class="narrow panel">
+  <h1>Choose a new password</h1>
+  <p class="muted">For {{ email }}. After saving, you will be signed out everywhere and can sign in with the new password.</p>
+  {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/reset-password" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="field"><label for="password">New password <span class="hint">At least 8 characters.</span></label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label for="confirm_password">Confirm new password</label>
+      <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></div>
+    <button class="btn btn-block" type="submit">Save new password</button>
+  </form>
+</div>
+{% endblock %}

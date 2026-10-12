@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Reset password{% endblock %}
+{% block content %}
+<div class="narrow panel">
+  <h1>Reset your password</h1>
+  <p class="muted">Enter your account email. If an account exists, we will send a link to choose a new password.</p>
+  {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/forgot-password" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="field"><label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required value="{{ email }}"></div>
+    <button class="btn btn-block" type="submit">Send reset link</button>
+  </form>
+  <p class="small mt-24"><a href="/login">Back to sign in</a></p>
+</div>
+{% endblock %}
