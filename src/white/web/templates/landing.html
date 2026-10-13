@@ -1,37 +1,328 @@
 {% extends "base.html" %}
-{% block title %}Website security assessment{% endblock %}
-{% block content %}
-<section class="hero">
-  <h1>Understand your website's security, in plain English.</h1>
-  <p>WHITE checks a website you own for common security weaknesses, explains each finding in business terms, and tells you what to do next. Technical evidence is included for your IT team.</p>
-  <p class="actions">
-    {% if user %}<a class="btn" href="/scans/new">Start a scan</a><a class="btn btn-secondary" href="/dashboard">Go to dashboard</a>
-    {% elif auth_mode == 'supabase' %}<a class="btn" href="/signup">Create an account</a><a class="btn btn-secondary" href="/login">Sign in</a>
-    {% endif %}
-  </p>
-</section>
-<div class="grid grid-2 mt-24">
-  <section class="panel">
-    <h2>What WHITE checks</h2>
-    <ul class="feature-list">
-      <li>Whether the connection is encrypted (HTTPS, certificate, redirects, HSTS)</li>
-      <li>Browser protections such as Content-Security-Policy and clickjacking defences</li>
-      <li>Cookie protections (Secure, HttpOnly, SameSite)</li>
-      <li>Accidental exposure of error details, server versions and well-known sensitive files</li>
-      <li>Insecure forms, mixed content, robots.txt and sitemap entries</li>
-      <li>Optional, harmless input-handling indicators for sites you explicitly authorize</li>
-    </ul>
-    <p class="small muted mt-12">{{ checks|length }} checks in total.</p>
-  </section>
-  <section class="panel">
-    <h2>What WHITE does not do</h2>
-    <ul class="feature-list">
-      <li>It does not guarantee that a website is secure or detect every vulnerability.</li>
-      <li>It does not log in, guess passwords, submit forms or attempt exploitation.</li>
-      <li>It only inspects publicly reachable responses, with strict request and time limits.</li>
-      <li>It refuses private, local and cloud-internal network addresses.</li>
-    </ul>
-    <p class="small muted mt-12">Only scan websites you own or have written permission to assess.</p>
-  </section>
+{% block title %}Website security, explained for leadership{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='css/home.css') }}">{% endblock %}
+{% block main_class %}full{% endblock %}
+
+{% block preloader %}
+<div class="intro" id="intro" aria-hidden="true">
+  <div class="intro-panel top"></div>
+  <div class="intro-panel bottom"></div>
+  <div class="intro-center">
+    <svg class="intro-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path class="tick" d="m9 12 2 2 4-4"/></svg>
+    <div class="intro-word"><span>W</span><span>H</span><span>I</span><span>T</span><span>E</span></div>
+    <div class="intro-line"><i></i></div>
+    <div class="intro-tag">Clarity before confidence.</div>
+  </div>
 </div>
 {% endblock %}
+
+{% block content %}
+{% set start_href = '/scans/new' if (user or auth_mode != 'supabase') else '/signup' %}
+{% set start_label = 'Start a scan' if user else ('Start your first scan' if auth_mode == 'supabase' else 'Start a scan') %}
+{% set icon = {
+  'shield': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  'chart': '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+  'file': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>',
+  'eye': '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  'terminal': '<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>',
+  'trend': '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  'key': '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14 9l2 2"/>',
+  'search': '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  'brief': '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'
+} %}
+{% set tick %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>{% endset %}
+
+<!-- ============================================================ HERO -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <a class="hero-badge reveal" href="#how"><b>New</b> Board-ready security briefings in minutes <span aria-hidden="true">→</span></a>
+      <h1 class="hero-title" id="hero-title">
+        <span class="line"><span class="word">Know</span> <span class="word">where</span> <span class="word">your</span></span>
+        <span class="line"><span class="word">website</span> <em class="word">stands.</em></span>
+      </h1>
+      <p class="hero-sub reveal reveal-delay-1">WHITE runs careful, non-intrusive checks on a website you own and turns the results into a clear briefing: what was found, why it matters to the business, and exactly what to ask your team to do next.</p>
+      <div class="hero-cta reveal reveal-delay-2">
+        <a class="btn btn-lg" href="{{ start_href }}" data-cursor="Start">{{ start_label }} <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="btn btn-secondary btn-lg" href="#how">See how it works</a>
+      </div>
+      <div class="hero-meta reveal reveal-delay-3">
+        <div><strong>{{ checks|length }}</strong>security checks</div>
+        <div><strong>&lt; 2 min</strong>per assessment</div>
+        <div><strong>0</strong>exploits attempted</div>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="globe-disc"></div>
+      <canvas class="globe" id="globe"></canvas>
+      <div class="float-card one">
+        <span class="example">Example</span>
+        <div class="k">Overall assessment</div>
+        <div class="v">Improvements recommended</div>
+        <div class="row"><span class="badge sev-MEDIUM">Medium</span><span class="badge sev-LOW">Low</span></div>
+      </div>
+      <div class="float-card two">
+        <span class="example">Example</span>
+        <div class="k">Next step</div>
+        <div class="v">Ask your web team to add a Content-Security-Policy.</div>
+      </div>
+      <div class="float-card three">
+        <div class="v"><span class="pulse-dot"></span>Checking connection protection</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ MARQUEE (real check names) -->
+<div class="marquee" aria-label="Checks included in every assessment">
+  <div class="marquee-track">
+    {% for _ in range(2) %}{% for c in checks %}<span class="marquee-item" {% if _ %}aria-hidden="true"{% endif %}>{{ c.name }}</span>{% endfor %}{% endfor %}
+  </div>
+</div>
+
+<!-- ============================================================ FOR LEADERS -->
+<section class="section" id="leaders" aria-labelledby="leaders-title">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <span class="eyebrow">For leaders</span>
+      <h2 class="section-title" id="leaders-title">Security is now a <em>board-level</em> question. Most leaders can't answer it.</h2>
+      <p class="lede">Technical scanners produce pages of jargon. WHITE produces a briefing you can act on, with the evidence your team needs to fix it.</p>
+    </div>
+    <div class="grid grid-3">
+      <article class="card question tilt reveal">
+        <span class="spot" aria-hidden="true"></span>
+        <p class="q">"Is our website exposing us right now?"</p>
+        <p>A plain-English summary of what was observed on your public website, ranked by business impact, with nothing overstated.</p>
+      </article>
+      <article class="card question tilt reveal reveal-delay-1">
+        <span class="spot" aria-hidden="true"></span>
+        <p class="q">"What should we fix first?"</p>
+        <p>A prioritised action plan ordered by severity and confidence, so budget and attention go to the issues that matter most.</p>
+      </article>
+      <article class="card question tilt reveal reveal-delay-2">
+        <span class="spot" aria-hidden="true"></span>
+        <p class="q">"Are we actually improving?"</p>
+        <p>Compare scans over time. An issue is only marked "no longer detected" when the same check ran again and confirmed it.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ FACTS BAND -->
+<section class="section dark" data-dark aria-labelledby="facts-title">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <span class="eyebrow">Careful by design</span>
+      <h2 class="section-title" id="facts-title">Thorough enough to inform. <em>Gentle</em> enough to run anytime.</h2>
+    </div>
+    <div class="stats">
+      <div class="stat reveal"><div class="n" data-count="{{ checks|length }}">{{ checks|length }}</div><div class="l">independent checks across six risk areas</div></div>
+      <div class="stat reveal reveal-delay-1"><div class="n"><span data-count="40">40</span></div><div class="l">requests at most per scan, rate-limited and time-boxed</div></div>
+      <div class="stat reveal reveal-delay-2"><div class="n"><span data-count="120">120</span>s</div><div class="l">hard time limit for every assessment</div></div>
+      <div class="stat reveal reveal-delay-3"><div class="n" data-count="0">0</div><div class="l">passwords guessed, forms submitted or exploits attempted</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ HOW IT WORKS -->
+<section class="section" id="how" aria-labelledby="how-title">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2 class="section-title" id="how-title">From website address to <em>board briefing</em> in three steps.</h2>
+    </div>
+    <div class="grid grid-3">
+      <article class="card tilt reveal">
+        <span class="spot" aria-hidden="true"></span>
+        <div class="step-num tilt-pop">01</div>
+        <h3>Confirm you own it</h3>
+        <p>Add your domain and prove ownership with a DNS record or a small verification file. WHITE never scans websites you can't vouch for.</p>
+      </article>
+      <article class="card tilt reveal reveal-delay-1">
+        <span class="spot" aria-hidden="true"></span>
+        <div class="step-num tilt-pop">02</div>
+        <h3>Run a careful scan</h3>
+        <p>WHITE inspects encryption, browser protections, cookies and accidental exposure using ordinary web requests. Watch real progress as each check completes.</p>
+      </article>
+      <article class="card tilt reveal reveal-delay-2">
+        <span class="spot" aria-hidden="true"></span>
+        <div class="step-num tilt-pop">03</div>
+        <h3>Brief your team</h3>
+        <p>Get an executive summary, a prioritised action plan and a PDF for the board, with technical evidence your IT team can verify.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ PRODUCT -->
+<section class="section alt" id="product" aria-labelledby="product-title">
+  <div class="section-inner">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Product</span>
+      <h2 class="section-title" id="product-title">Everything a leader needs. <em>Nothing</em> they don't.</h2>
+    </div>
+    <div class="grid grid-3">
+      {% for ic, title, text in [
+        ('chart', 'Executive dashboard', 'Your current position at a glance: findings by severity and category, coverage, and what to do next.'),
+        ('file', 'Board-ready PDF reports', 'A professional report with an executive summary, charts, action plan and full evidence, ready to circulate.'),
+        ('eye', 'Plain-English findings', 'Every issue explains what was found, why it matters to the business and the practical next step.'),
+        ('search', 'Evidence for your IT team', 'Expandable technical detail: headers, affected addresses and remediation guidance, with secrets redacted.'),
+        ('trend', 'Progress over time', 'Track new, unresolved and resolved issues across scans, verified check by check rather than assumed.'),
+        ('terminal', 'Developer command line', 'The same engine runs in a terminal for engineers and automation, with JSON, HTML and PDF output.')
+      ] %}
+      <article class="card tilt reveal {{ ['', 'reveal-delay-1', 'reveal-delay-2'][loop.index0 % 3] }}">
+        <span class="spot" aria-hidden="true"></span>
+        <div class="icon tilt-pop" aria-hidden="true"><svg viewBox="0 0 24 24">{{ icon[ic]|safe }}</svg></div>
+        <h3>{{ title }}</h3>
+        <p>{{ text }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ REPORT ANATOMY -->
+<section class="section" id="report" aria-labelledby="report-title">
+  <div class="section-inner split">
+    <div class="reveal">
+      <span class="eyebrow">The briefing</span>
+      <h2 class="section-title" id="report-title">Findings you can <em>discuss in a meeting</em>, not decode.</h2>
+      <p class="lede">Each observation is written for two readers at once: the leader who decides and the engineer who fixes.</p>
+      <ol class="anatomy-list">
+        <li><span class="n">1</span><div><strong>What we found</strong><span>A one-sentence description of the observation.</span></div></li>
+        <li><span class="n">2</span><div><strong>Why it matters</strong><span>The business consequence, without exaggeration.</span></div></li>
+        <li><span class="n">3</span><div><strong>What to do</strong><span>A clear request you can forward to your team.</span></div></li>
+        <li><span class="n">4</span><div><strong>Severity and confidence</strong><span>Impact and certainty are rated separately, so you know what to verify.</span></div></li>
+      </ol>
+    </div>
+    <div class="report-card tilt reveal reveal-delay-1" data-tilt="5" aria-label="Illustrative example of a finding">
+      <span class="ribbon">Illustrative example</span>
+      <span class="badge sev-MEDIUM">Medium</span>
+      <h3>Website can be embedded by other sites</h3>
+      <div class="meta">Confirmed observation · Confidence: high · Browser security</div>
+      <dl>
+        <div><dt>What we found</dt><dd>The website does not stop other websites from displaying it inside a frame.</dd></div>
+        <div><dt>Why it matters</dt><dd>An attacker could display your site invisibly within their own page and trick visitors into clicking buttons they cannot see.</dd></div>
+        <div><dt>What to do</dt><dd>Ask your web team to add frame protection.</dd></div>
+      </dl>
+      <div class="tech">X-Frame-Options: not present<br>Content-Security-Policy frame-ancestors: not present<br>Fix: frame-ancestors 'self'</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ COVERAGE (from the real check registry) -->
+<section class="section alt" id="coverage" aria-labelledby="coverage-title">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <span class="eyebrow">What we check</span>
+      <h2 class="section-title" id="coverage-title">{{ checks|length }} checks across <em>six</em> risk areas.</h2>
+      <p class="lede">Mapped to the OWASP Top 10:2025 risk categories. Optional input checks (marked in copper) only run when you explicitly switch them on.</p>
+    </div>
+    <div class="coverage-grid">
+      {% for group in checks|groupby('category') %}
+      <div class="coverage-card reveal {{ ['', 'reveal-delay-1', 'reveal-delay-2'][loop.index0 % 3] }}">
+        <h3>{{ group.grouper.label }} <small>{{ group.list|length }} check{{ 's' if group.list|length != 1 }}</small></h3>
+        <ul>{% for c in group.list %}<li {% if c.active %}class="opt"{% endif %}>{{ c.name }}</li>{% endfor %}</ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ TWO AUDIENCES -->
+<section class="section" aria-labelledby="aud-title">
+  <div class="section-inner">
+    <div class="section-head center reveal">
+      <span class="eyebrow">One report, two audiences</span>
+      <h2 class="section-title" id="aud-title">Decide with confidence. <em>Fix</em> with evidence.</h2>
+    </div>
+    <div class="grid grid-2">
+      <div class="audience reveal">
+        <span class="eyebrow">For the leadership team</span>
+        <p class="q">A clear answer, not a data dump.</p>
+        <ul>
+          <li>{{ tick|safe }}<span>An overall assessment that never claims "100% secure"</span></li>
+          <li>{{ tick|safe }}<span>High-priority issues counted and explained in business terms</span></li>
+          <li>{{ tick|safe }}<span>A prioritised action plan you can delegate today</span></li>
+          <li>{{ tick|safe }}<span>Trends that show whether the investment is working</span></li>
+        </ul>
+      </div>
+      <div class="audience dark reveal reveal-delay-1" data-dark>
+        <span class="eyebrow">For your IT team</span>
+        <p class="q">Evidence they can verify in minutes.</p>
+        <ul>
+          <li>{{ tick|safe }}<span>Observed headers, affected URLs and redirect chains</span></li>
+          <li>{{ tick|safe }}<span>Specific remediation for common servers and frameworks</span></li>
+          <li>{{ tick|safe }}<span>JSON export and a command-line tool for automation</span></li>
+          <li>{{ tick|safe }}<span>Stable finding IDs to track issues between scans</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ TRUST -->
+<section class="section dark" id="trust" data-dark aria-labelledby="trust-title">
+  <div class="section-inner">
+    <div class="section-head reveal">
+      <span class="eyebrow">Responsible by default</span>
+      <h2 class="section-title" id="trust-title">What WHITE will <em>never</em> do.</h2>
+      <p class="lede">An assessment tool should never become a risk itself. These limits are enforced in the software, not just promised.</p>
+    </div>
+    <div class="never-grid reveal">
+      <div class="never"><span class="x" aria-hidden="true">✕</span><b>Scan without permission</b>Every scan requires confirmation, and accounts must verify domain ownership.</div>
+      <div class="never"><span class="x" aria-hidden="true">✕</span><b>Attempt to break in</b>No password guessing, exploitation, denial-of-service testing or form submission.</div>
+      <div class="never"><span class="x" aria-hidden="true">✕</span><b>Reach internal networks</b>Private, local and cloud-internal addresses are refused at the connection level.</div>
+      <div class="never"><span class="x" aria-hidden="true">✕</span><b>Store your secrets</b>Cookie values, tokens and passwords are redacted from every report.</div>
+      <div class="never"><span class="x" aria-hidden="true">✕</span><b>Overstate the results</b>"Passed" means only that a specific issue wasn't detected. No fake scores.</div>
+      <div class="never"><span class="x" aria-hidden="true">✕</span><b>Share your data</b>Your scans are visible only to your account, enforced by the database itself.</div>
+    </div>
+    <p class="mt-24"><a class="btn btn-ghost-light" href="/security">Read about security &amp; responsible use <span class="arrow" aria-hidden="true">→</span></a></p>
+  </div>
+</section>
+
+<!-- ============================================================ FAQ -->
+<section class="section" id="faq" aria-labelledby="faq-title">
+  <div class="section-inner">
+    <div class="section-head center reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2 class="section-title" id="faq-title">Questions leaders ask us.</h2>
+    </div>
+    <div class="faq reveal">
+      {% for q, a in [
+        ('Is it safe to run WHITE on our live website?', 'Yes. WHITE behaves like a careful visitor: at most 40 ordinary requests per scan, spaced out, with a two-minute limit. It never submits forms, logs in or attempts to exploit anything.'),
+        ('Will it slow down or disrupt the site?', 'A scan sends fewer requests than a single visitor browsing a handful of pages. It is designed to be safe to run at any time.'),
+        ('Does a clean report mean we are secure?', 'No, and WHITE will never claim that. It checks a defined set of externally visible issues. A clean result means those issues were not detected; it is one input into your security programme, not a guarantee.'),
+        ('Who can see our results?', 'Only your account. Scan records are stored with database-level access rules that prevent other users from reading them, and sensitive values are redacted before anything is saved.'),
+        ('What do I need to get started?', 'An account, and a website you own or are authorized to assess. You verify ownership once with a DNS record or a small file, then run as many scans as you need.'),
+        ('Can our developers use it too?', 'Yes. The same scanning engine ships as a command-line tool with JSON, HTML and PDF output, suitable for automation.'),
+        ('How is severity decided?', 'Severity reflects potential business impact; confidence reflects how certain the observation is. They are rated separately and the rules are documented, so nothing is a black box.')
+      ] %}
+      <details>
+        <summary>{{ q }}<span class="plus" aria-hidden="true"></span></summary>
+        <div class="answer">{{ a }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ FINAL CTA -->
+<section class="section" aria-labelledby="cta-title">
+  <div class="section-inner">
+    <div class="cta-band reveal" data-dark>
+      <span class="ring" aria-hidden="true"></span><span class="ring two" aria-hidden="true"></span>
+      <h2 id="cta-title">Get your first briefing in minutes.</h2>
+      <div>
+        <p>Run a careful assessment of a website you own and see exactly where you stand, in language your whole leadership team understands.</p>
+        <div class="actions">
+          <a class="btn btn-light btn-lg" href="{{ start_href }}">{{ start_label }} <span class="arrow" aria-hidden="true">→</span></a>
+          {% if auth_mode == 'supabase' and not user %}<a class="btn btn-ghost-light btn-lg" href="/login">Sign in</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', path='js/home.js') }}"></script>{% endblock %}

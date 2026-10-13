@@ -7,7 +7,7 @@
   var data = JSON.parse(dataEl.textContent);
 
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  Chart.defaults.font.family = '"InterVariable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   Chart.defaults.color = "#4b525b";
   Chart.defaults.borderColor = "#e2e4e6";
   Chart.defaults.animation = reduceMotion ? false : { duration: 300 };

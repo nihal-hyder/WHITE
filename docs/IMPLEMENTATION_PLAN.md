@@ -35,7 +35,7 @@ Last updated: 2026-10-13.
 | 5. Backend, GUI, charts, local persistence | Done: FastAPI, Jinja2 pages, Chart.js dashboard, SQLite |
 | 6. Supabase auth, ownership, migrations | Done; tested against a fake Supabase. Migration **applied with the owner's approval** on 2026-10-12 (version `20261012205314`); RLS verified on the live database with a rolled-back two-user test; security advisor: no issues. Real email flows need dashboard configuration (see `SUPABASE_SETUP.md`). |
 | 7. Integration | Done: CLI and GUI share `white.scanner` and `white.reporting` |
-| 8. Tests, debugging, security review | Done: 158 automated tests passing; ruff clean |
+| 8. Tests, debugging, security review | Done: 161 automated tests passing; ruff clean |
 | 9. Documentation | Done |
 | 10. Audit | Done: no secrets in tracked files; `.env` ignored |
 

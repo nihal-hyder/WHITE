@@ -13,7 +13,8 @@ Start the GUI with `white serve` and open <http://127.0.0.1:8000>.
 
 | Page | Path | Purpose |
 | --- | --- | --- |
-| Welcome | `/` | What WHITE checks and does not do. |
+| Home | `/` | Full product homepage for business leaders: intro animation, hero with interactive 3D globe, leadership questions, facts, how it works, product, report anatomy, coverage (generated from the real check list), audiences, responsible-use limits, FAQ and call to action. |
+| Security, Privacy, Acceptable use | `/security`, `/privacy`, `/acceptable-use` | Plain-language policy pages linked from the footer. |
 | Sign up / Sign in | `/signup`, `/login` | Supabase email + password accounts. |
 | Forgot / reset password | `/forgot-password`, `/reset-password` | Email link, then choose a new password. |
 | Dashboard | `/dashboard` | Executive overview of the most recent completed scan of a chosen website. |
@@ -48,3 +49,17 @@ checks, or assessment incomplete.
 - **Severity** is the potential impact; **confidence** is how sure WHITE is about the observation.
 - **Possible issue** (POTENTIAL) means an indicator that a qualified person should confirm.
 - **Passed** means only that the specific issue was not detected in this scan.
+
+## Design and motion
+
+- Solid colours only (warm ivory, deep ink, emerald accent, copper highlight); Instrument Serif headings and
+  Inter body text, both bundled locally under `web/static/fonts/` (SIL Open Font License).
+- The homepage shows a short intro animation on every load (it waits for fonts and the page to load, with a
+  minimum of about 1.7 seconds and a 4-second failsafe), then reveals the hero.
+- Custom cursor (dot + trailing ring that grows over interactive elements), magnetic buttons, 3D tilt cards,
+  scroll reveals and a 3D headline that tilts with the pointer; individual words lift on hover.
+- The globe is drawn on a plain canvas (no 3D library) and pauses when off-screen or when the tab is hidden.
+- With the operating system's "reduce motion" setting enabled, animations are minimised. On touch
+  devices the custom cursor and pointer effects are disabled. Without JavaScript all content remains visible.
+- Homepage examples (floating cards, sample finding) are labelled "Example" / "Illustrative example". The
+  homepage contains no invented customers, testimonials or usage numbers.

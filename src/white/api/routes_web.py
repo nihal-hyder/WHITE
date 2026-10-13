@@ -45,6 +45,24 @@ def landing(request: Request) -> Response:
     return render(request, "landing.html", {"user": user, "checks": checks})
 
 
+PUBLIC_PAGES = {
+    "/security": ("security.html", "security"),
+    "/privacy": ("privacy.html", "privacy"),
+    "/acceptable-use": ("acceptable_use.html", "acceptable-use"),
+}
+
+
+def _public_page(template: str, active: str):
+    def page(request: Request) -> Response:
+        return render(request, template, {"user": optional_user(request), "active": active})
+
+    return page
+
+
+for _path, (_template, _active) in PUBLIC_PAGES.items():
+    router.add_api_route(_path, _public_page(_template, _active), methods=["GET"], include_in_schema=False)
+
+
 @router.get("/dashboard")
 def dashboard(
     request: Request, target: str | None = None, user: CurrentUser = Depends(require_user)

@@ -4,17 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <meta name="description" content="WHITE gives business leaders a clear, evidence-based view of their website's security - in plain English.">
+  <meta name="theme-color" content="#f6f4ee">
   <title>{% block title %}WHITE{% endblock %} · WHITE</title>
+  <script src="{{ url_for('static', path='js/boot.js') }}"></script>
+  <link rel="preload" href="{{ url_for('static', path='fonts/inter-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ url_for('static', path='fonts/instrument-serif-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
-  <link rel="icon" href="data:,">
+  {% block head %}{% endblock %}
+  <link rel="icon" href="{{ url_for('static', path='img/favicon.svg') }}" type="image/svg+xml">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+{% block preloader %}{% endblock %}
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="/">WH<span>I</span>TE</a>
+    <a class="brand" href="/" aria-label="WHITE home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f6f4ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      </span>
+      <span>WH<span class="i">I</span>TE</span>
+    </a>
+    <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav"><span></span></button>
     {% if user %}
-    <nav class="nav" aria-label="Main">
+    <nav class="nav" id="site-nav" aria-label="Main">
       <a href="/dashboard" {% if active == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
       <a href="/scans/new" {% if active == 'new' %}aria-current="page"{% endif %}>New scan</a>
       <a href="/history" {% if active == 'history' %}aria-current="page"{% endif %}>Scan history</a>
@@ -22,7 +35,7 @@
       <a href="/settings" {% if active == 'settings' %}aria-current="page"{% endif %}>Settings</a>
     </nav>
     <div class="account">
-      <span title="Signed in as">{{ user.email }}</span>
+      <span class="who" title="Signed in as">{{ user.email }}</span>
       {% if not user.is_local %}
       <form method="post" action="/logout" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
@@ -31,19 +44,25 @@
       {% endif %}
     </div>
     {% else %}
-    <nav class="nav" aria-label="Main"></nav>
+    <nav class="nav" id="site-nav" aria-label="Main">
+      <a href="/#product">Product</a>
+      <a href="/#how">How it works</a>
+      <a href="/#leaders">For leaders</a>
+      <a href="/security" {% if active == 'security' %}aria-current="page"{% endif %}>Security</a>
+      <a href="/#faq">FAQ</a>
+    </nav>
     <div class="account">
       {% if auth_mode == 'supabase' %}
       <a href="/login">Sign in</a>
-      <a class="btn" href="/signup">Create account</a>
+      <a class="btn" href="/signup">Get started <span class="arrow" aria-hidden="true">→</span></a>
       {% else %}
-      <a class="btn" href="/dashboard">Open dashboard</a>
+      <a class="btn" href="/dashboard">Open dashboard <span class="arrow" aria-hidden="true">→</span></a>
       {% endif %}
     </div>
     {% endif %}
   </div>
 </header>
-<main id="main">
+<main id="main" class="{% block main_class %}{% endblock %}">
   {% set message = flash(request) %}
   {% if message %}<div class="alert alert-{{ message[0] }}" role="status">{{ message[1] }}</div>{% endif %}
   {% if user and user.is_local and active == 'dashboard' %}
@@ -51,9 +70,58 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
-<footer>
-  <div>WHITE {{ app_version }} · Only assess websites you own or are authorized to test. Results are observations from limited, non-intrusive checks and are not a guarantee of security.</div>
+<footer class="site-footer" data-dark>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/" aria-label="WHITE home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f6f4ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          <span>WHITE</span>
+        </a>
+        <p>Clear, evidence-based website security assessments for the people accountable for them. Only assess websites you own or are authorized to test.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="/scans/new">Start a scan</a></li>
+          <li><a href="/history">Scan history</a></li>
+          <li><a href="/#coverage">What we check</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Learn</h4>
+        <ul>
+          <li><a href="/#how">How it works</a></li>
+          <li><a href="/#leaders">For leaders</a></li>
+          <li><a href="/#faq">FAQ</a></li>
+          <li><a href="/security">Security &amp; responsible use</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Account &amp; legal</h4>
+        <ul>
+          {% if auth_mode == 'supabase' and not user %}
+          <li><a href="/login">Sign in</a></li>
+          <li><a href="/signup">Create account</a></li>
+          {% else %}
+          <li><a href="/settings">Settings</a></li>
+          {% endif %}
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/acceptable-use">Acceptable use</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-word" aria-hidden="true">WHITE</div>
+    <div class="footer-bottom">
+      <span>© 2026 WHITE · Version {{ app_version }}</span>
+      <span>Results are observations from limited, non-intrusive checks - not a guarantee of security.</span>
+    </div>
+  </div>
 </footer>
+<script src="{{ url_for('static', path='js/motion.js') }}"></script>
 <script src="{{ url_for('static', path='js/confirm.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

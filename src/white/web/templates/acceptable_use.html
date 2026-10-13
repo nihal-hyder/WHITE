@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Acceptable use{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='css/home.css') }}">{% endblock %}
+{% block content %}
+<article class="prose reveal">
+  <span class="eyebrow">Acceptable use</span>
+  <h1>Using WHITE responsibly</h1>
+  <p class="updated">These rules apply to everyone using this installation of WHITE.</p>
+
+  <h2>You may</h2>
+  <ul>
+    <li>Assess websites that you or your organisation own.</li>
+    <li>Assess websites for which you have explicit, preferably written, permission from the owner.</li>
+    <li>Share WHITE reports with people who need them to improve the assessed website.</li>
+  </ul>
+
+  <h2>You must not</h2>
+  <ul>
+    <li>Scan websites you do not own and are not authorized to assess.</li>
+    <li>Attempt to bypass WHITE's ownership verification, rate limits or network protections.</li>
+    <li>Use WHITE, or its reports, to attack, disrupt or gain unauthorized access to any system.</li>
+    <li>Present WHITE results as a guarantee or certification of security.</li>
+  </ul>
+
+  <h2>Why this matters</h2>
+  <p>Assessing a website without permission can be unlawful in many countries, even when the checks are gentle. WHITE is designed to help owners understand and improve their own websites.</p>
+  <p class="mt-24"><a class="btn" href="/security">Security &amp; responsible use <span class="arrow" aria-hidden="true">→</span></a></p>
+</article>
+{% endblock %}

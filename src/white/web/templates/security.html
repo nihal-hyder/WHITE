@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Security &amp; responsible use{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='css/home.css') }}">{% endblock %}
+{% block content %}
+<article class="prose reveal">
+  <span class="eyebrow">Security</span>
+  <h1>Security &amp; responsible use</h1>
+  <p class="updated">How WHITE protects you, the websites it assesses, and itself.</p>
+
+  <h2>Authorized assessments only</h2>
+  <p>WHITE must only be used on websites you own or have explicit permission to assess. Every scan requires you to confirm this. In accounts mode you must also prove ownership of a domain, with a DNS TXT record or a verification file, before WHITE will scan it.</p>
+
+  <h2>What a scan does</h2>
+  <ul>
+    <li>Sends only ordinary <code>GET</code> and <code>HEAD</code> requests: at most 40 per scan, spaced out, within a two-minute limit.</li>
+    <li>Reads responses and inspects them. Downloaded content is never executed.</li>
+    <li>Never submits forms, logs in, guesses passwords, attempts exploitation or performs denial-of-service testing.</li>
+    <li>Optional input checks, off by default, send a harmless marker in up to three existing URL parameters and report only "possible issues" for manual confirmation.</li>
+  </ul>
+
+  <h2>Network protections</h2>
+  <p>WHITE refuses private, local, link-local, reserved and cloud-metadata network addresses. Every address a website name resolves to is checked, and the connection is made to the exact address that was checked, which defeats DNS-rebinding tricks. Redirects are checked at every step.</p>
+
+  <h2>Account and data protection</h2>
+  <ul>
+    <li>Passwords are handled by Supabase Auth. WHITE never stores or sees them after sign-in.</li>
+    <li>Your browser holds only an opaque session cookie; access tokens stay encrypted on the server.</li>
+    <li>Scan records are protected by database-level access rules, so one account cannot read another's results.</li>
+    <li>Cookie values, tokens, passwords and keys are redacted from findings and reports.</li>
+    <li>Forms are protected against cross-site request forgery, and pages use a strict Content-Security-Policy.</li>
+  </ul>
+
+  <h2>Understanding the results</h2>
+  <p>WHITE performs a limited, non-intrusive assessment of publicly visible behaviour. It cannot detect every vulnerability and never claims that a website is secure. A "Passed" check means only that the specific issue was not detected during that scan.</p>
+
+  <h2>Reporting a problem with WHITE</h2>
+  <p>If you believe you have found a security issue in WHITE itself, please report it privately to the maintainers of your WHITE installation rather than publicly.</p>
+  <p class="mt-24"><a class="btn" href="/#faq">Read the FAQ <span class="arrow" aria-hidden="true">→</span></a></p>
+</article>
+{% endblock %}

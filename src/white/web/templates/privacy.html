@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Privacy{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='css/home.css') }}">{% endblock %}
+{% block content %}
+<article class="prose reveal">
+  <span class="eyebrow">Privacy</span>
+  <h1>How WHITE handles your data</h1>
+  <p class="updated">A plain description of what this installation of WHITE stores. The operator of the installation is responsible for its privacy obligations.</p>
+
+  <h2>What is stored</h2>
+  <ul>
+    <li><strong>Account details</strong> (accounts mode): your email address and authentication records, managed by Supabase Auth.</li>
+    <li><strong>Scan records</strong>: the website address, timestamps, status and the resulting report, including findings and redacted evidence.</li>
+    <li><strong>Session data</strong>: a server-side session linked to an opaque cookie in your browser, with encrypted access tokens.</li>
+    <li><strong>Domain verification</strong>: the domains you add and whether ownership was verified.</li>
+  </ul>
+
+  <h2>What is not stored</h2>
+  <ul>
+    <li>Full page contents of scanned websites. They are held in memory only during a scan.</li>
+    <li>Cookie values, tokens, passwords or API keys observed during a scan. These are redacted.</li>
+    <li>Your password. It is handled by Supabase Auth.</li>
+  </ul>
+
+  <h2>Where it is stored</h2>
+  <p>In local mode, everything stays on the computer running WHITE. In accounts mode, scan records are stored in the operator's Supabase project, with access rules that restrict each record to its owner. Sessions and domain verifications are kept by the WHITE server.</p>
+
+  <h2>Cookies</h2>
+  <p>WHITE uses two strictly necessary cookies: one for your signed-in session and one to protect forms against cross-site request forgery. There are no advertising or analytics cookies.</p>
+
+  <h2>Your control</h2>
+  <p>You can delete any scan from its report page or from your scan history, sign out on all devices from Settings, and remove verified domains at any time.</p>
+</article>
+{% endblock %}

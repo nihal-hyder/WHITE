@@ -186,7 +186,7 @@ pytest
 ruff check src tests
 ```
 
-158 automated tests (scanner, SSRF protections, reports, CLI, GUI, authentication, session handling,
+161 automated tests (scanner, SSRF protections, reports, CLI, GUI, authentication, session handling,
 cross-user isolation). Details and limits of coverage: [docs/TESTING.md](docs/TESTING.md).
 
 ## Troubleshooting
