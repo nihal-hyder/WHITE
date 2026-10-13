@@ -3,33 +3,79 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Northwind Coffee Roasters (WHITE demo site)</title>
-  <link rel="stylesheet" href="/assets/site.css">
-  <!-- Deliberate weakness for testing: a script loaded over plain HTTP (active mixed content). -->
-  <script src="http://cdn.example.com/analytics.js"></script>
+  <title>VELOUR — Considered clothing & footwear</title>
+  <meta name="description" content="VELOUR is a demonstration storefront used to test the WHITE security scanner.">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/store.css">
 </head>
 <body>
-  <!-- TODO remove before launch: admin password: changeme123 -->
-  <header class="bar">
-    <strong>Northwind Coffee Roasters</strong>
-    <span class="tag">Demo site for testing WHITE - not a real business</span>
-  </header>
-  <main>
-    <section class="hero">
-      <h1>Small-batch coffee, roasted weekly.</h1>
-      <p>This page is intentionally misconfigured so WHITE has something to find.</p>
-      <img src="http://images.example.com/beans.jpg" alt="Coffee beans (deliberately loaded over HTTP)">
-    </section>
-    <section class="card">
-      <h2>Wholesale partner login</h2>
-      <!-- Deliberate weaknesses: form submits over HTTP and uses GET with a password field. -->
-      <form action="http://northwind-demo.example.com/login" method="get">
-        <label>Email <input type="email" name="email"></label>
-        <label>Password <input type="password" name="password"></label>
-        <button type="submit">Sign in</button>
+  <!-- TODO before launch: staging admin password = TempPass!2026 (remove this) -->
+  <div class="topbar"><div class="wrap">Free carbon-neutral delivery over $150 · 30-day returns</div></div>
+  <header class="site-head"><div class="wrap">
+    <a class="brand" href="/">VEL<b>O</b>UR</a>
+    <nav class="nav">
+      <a href="/shop.html">Shop all</a>
+      <a href="/shop.html?category=women">Women</a>
+      <a href="/shop.html?category=men">Men</a>
+      <a href="/shop.html?category=footwear">Footwear</a>
+    </nav>
+    <div class="head-actions">
+      <a href="/login.html">Account</a>
+      <a class="cart-link" href="/cart.html">Bag<span class="cart-count" data-cart-count>0</span></a>
+    </div>
+  </div></header>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="kicker">Autumn / Winter 2026</div>
+      <h1>Pieces made to be kept.</h1>
+      <p>Quietly considered clothing and footwear in natural fabrics, cut for a life well lived.</p>
+      <div><a class="btn" href="/shop.html">Shop the collection</a></div>
+    </div>
+    <div class="hero-img"><img src="/assets/img/hero.svg" alt="VELOUR Autumn Winter collection"></div>
+  </section>
+
+  <div class="strip"><div class="strip-track">
+    <span>Washed Linen</span><span>·</span><span>Double-faced Wool</span><span>·</span><span>Goodyear Welted</span><span>·</span><span>Sand-washed Silk</span><span>·</span><span>Carbon-neutral Delivery</span><span>·</span>
+    <span>Washed Linen</span><span>·</span><span>Double-faced Wool</span><span>·</span><span>Goodyear Welted</span><span>·</span><span>Sand-washed Silk</span><span>·</span><span>Carbon-neutral Delivery</span><span>·</span>
+  </div></div>
+
+  <section class="section wrap">
+    <div class="section-head"><h2>Shop by category</h2><a class="link" href="/shop.html">View all</a></div>
+    <div class="cats">
+      <a class="cat" href="/shop.html?category=women"><img src="/assets/img/cat-women.svg" alt="Women"><span>Women</span></a>
+      <a class="cat" href="/shop.html?category=men"><img src="/assets/img/cat-men.svg" alt="Men"><span>Men</span></a>
+      <a class="cat" href="/shop.html?category=footwear"><img src="/assets/img/cat-footwear.svg" alt="Footwear"><span>Footwear</span></a>
+    </div>
+  </section>
+
+  <section class="section wrap" style="padding-top:0">
+    <div class="section-head"><h2>New this season</h2><a class="link" href="/shop.html">Shop all</a></div>
+    <div class="grid" data-featured></div>
+  </section>
+
+  <section class="section" style="background:var(--surface-2)">
+    <div class="wrap center" style="max-width:620px">
+      <h2 style="font-size:2.2rem">Join the atelier list</h2>
+      <p class="muted">Early access to new pieces and restocks. No noise — a note when it matters.</p>
+      <form action="http://newsletter.velour-demo.example/subscribe" method="get" style="display:flex;gap:10px;max-width:440px;margin:22px auto 0">
+        <input type="email" name="email" placeholder="Your email address" required style="margin:0">
+        <button class="btn" type="submit">Subscribe</button>
       </form>
-    </section>
-  </main>
-  <footer>Demo content only. Configuration: <b>weak</b>.</footer>
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <div><a class="brand" href="/">VEL<b>O</b>UR</a><p>Considered clothing and footwear, made to last. A demonstration storefront used to test the WHITE security scanner.</p></div>
+      <div><h4>Shop</h4><ul><li><a href="/shop.html?category=women">Women</a></li><li><a href="/shop.html?category=men">Men</a></li><li><a href="/shop.html?category=footwear">Footwear</a></li><li><a href="/shop.html">New in</a></li></ul></div>
+      <div><h4>Help</h4><ul><li><a href="/shop.html">Delivery</a></li><li><a href="/shop.html">Returns</a></li><li><a href="/login.html">Account</a></li><li><a href="/admin/">Staff login</a></li></ul></div>
+      <div><h4>Studio</h4><ul><li><a href="/">About</a></li><li><a href="/">Sustainability</a></li><li><a href="/">Careers</a></li></ul></div>
+    </div>
+    <div class="foot-bottom"><div class="wrap"><span>© 2026 VELOUR — demonstration store</span><span>Not a real retailer. No orders are fulfilled.</span></div></div>
+  </footer>
+
+  <script src="/assets/js/catalog.js"></script>
+  <script src="/assets/js/store.js"></script>
 </body>
 </html>

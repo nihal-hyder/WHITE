@@ -149,6 +149,7 @@ def scan_page(scan_id: str, request: Request, user: CurrentUser = Depends(requir
                 "record": record,
                 "status": status,
                 "finished": status["state"] in {s.value for s in FINISHED_STATES},
+                "checks": all_checks(),
                 "active": "history",
             },
         )

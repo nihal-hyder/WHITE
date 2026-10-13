@@ -34,7 +34,7 @@ Options:
 | `-f, --format text\|json\|html\|pdf` | Output format (default text). PDF requires `--output`. |
 | `-o, --output FILE` | Write the report to a file. Existing files are not overwritten unless `--force` is given. |
 | `--active-checks` | Also run the opt-in XSS-reflection and SQL-error indicators. |
-| `--allow-private-network` | Permit localhost/private IPs (cloud metadata IPs remain blocked). Only for your own machines. |
+| `--allow-private-network` | Permit localhost/private IPs, and any web port (cloud metadata IPs remain blocked). Only for your own machines. |
 | `--timeout SECONDS` | Per-request timeout (1-60, default 10). |
 | `--max-seconds SECONDS` | Overall scan time limit (10-900, default 120). |
 | `--fail-on SEVERITY` | Exit with code 1 when findings at or above `info/low/medium/high/critical` exist (useful in CI). |

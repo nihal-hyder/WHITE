@@ -1,0 +1,11 @@
+APP_NAME=velour-store
+APP_ENV=production
+APP_DEBUG=false
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_DATABASE=velour
+DB_USERNAME=velour_app
+DB_PASSWORD=demo-not-a-real-password
+APP_SECRET_KEY=demo-not-a-real-secret-0000000000
+STRIPE_API_KEY=sk_test_demo_not_a_real_key
+MAIL_PASSWORD=demo-not-real

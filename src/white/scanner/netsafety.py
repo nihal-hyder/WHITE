@@ -34,6 +34,25 @@ ALWAYS_BLOCKED = {
 
 BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal", ".localdomain", ".home.arpa", ".lan")
 BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "metadata", "metadata.google.internal"}
+
+
+def is_local_host(host: str) -> bool:
+    """True for your own machine / private network: a loopback or private IP, or a local name.
+
+    Used to waive domain-ownership verification for targets you obviously control and could never
+    verify by DNS (e.g. 127.0.0.1). Cloud-metadata addresses are never treated as local.
+    """
+    host = host.strip().rstrip(".").lower()
+    ip = _parse_ip(host)
+    if ip is not None:
+        if ip in ALWAYS_BLOCKED:
+            return False
+        mapped = getattr(ip, "ipv4_mapped", None) if isinstance(ip, ipaddress.IPv6Address) else None
+        check = mapped or ip
+        return bool(check.is_loopback or check.is_private or check.is_link_local)
+    return host in BLOCKED_HOSTNAMES or host.endswith(BLOCKED_HOST_SUFFIXES)
+
+
 MAX_URL_LENGTH = 2048
 
 
@@ -136,7 +155,9 @@ def validate_target_url(raw_url: str, config: ScanConfig | None = None) -> Valid
         raise TargetValidationError("The URL does not contain a hostname.")
     if port is None:
         port = 443 if scheme == "https" else 80
-    if port not in config.allowed_ports:
+    # The port allowlist is an SSRF guard for untrusted public targets. When the operator has
+    # explicitly opted into scanning their own private/local hosts, any web port is permitted.
+    if port not in config.allowed_ports and not config.allow_private_targets:
         allowed = ", ".join(str(p) for p in config.allowed_ports)
         raise TargetValidationError(f"Port {port} is not permitted. Allowed ports: {allowed}.")
 
@@ -177,7 +198,7 @@ def resolve_and_validate(host: str, port: int, config: ScanConfig) -> list[str]:
 
     Failing closed when any address is internal prevents round-robin rebinding tricks.
     """
-    if port not in config.allowed_ports:
+    if port not in config.allowed_ports and not config.allow_private_targets:
         raise BlockedDestinationError(f"port {port} is not permitted")
     literal = _parse_ip(host)
     if literal is not None:

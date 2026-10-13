@@ -1,0 +1,19 @@
+{
+  "mode": "hardened",
+  "server_header": "web",
+  "directory_listing": false,
+  "expose_files": false,
+  "verbose_errors": false,
+  "headers": [
+    { "source": "/(.*)", "set": [
+      ["Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"],
+      ["X-Frame-Options", "DENY"],
+      ["X-Content-Type-Options", "nosniff"],
+      ["Referrer-Policy", "strict-origin-when-cross-origin"],
+      ["Permissions-Policy", "camera=(), microphone=(), geolocation=()"]
+    ]},
+    { "source": "/", "set": [
+      ["Set-Cookie", "session_id=8f2a71c9d4e0; Path=/; HttpOnly; SameSite=Lax"]
+    ]}
+  ]
+}

@@ -86,6 +86,16 @@ def test_ports_restricted():
     assert validate_target_url("https://example.com:8443/", CFG).port == 8443
 
 
+def test_port_allowlist_relaxed_for_local_scanning():
+    # Opting into private/local scanning permits any web port (e.g. a second dev server on 8444)
+    # but never relaxes the address rules: cloud metadata and the like stay blocked.
+    dev = ScanConfig(allow_private_targets=True)
+    assert validate_target_url("http://127.0.0.1:8444/", dev).port == 8444
+    assert resolve_and_validate("127.0.0.1", 8444, dev) == ["127.0.0.1"]
+    with pytest.raises(TargetValidationError):
+        validate_target_url("http://169.254.169.254:8444/", dev)
+
+
 def test_valid_url_normalized():
     target = validate_target_url("HTTPS://Example.COM", CFG)
     assert target.url == "https://example.com/"

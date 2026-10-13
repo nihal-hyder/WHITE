@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /cart.html
+Disallow: /checkout.html
+Allow: /
+Sitemap: http://127.0.0.1:8443/sitemap.xml

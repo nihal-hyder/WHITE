@@ -1,0 +1,13 @@
+{
+  "mode": "weak",
+  "server_header": "Apache/2.4.29 (Ubuntu) PHP/7.4.3",
+  "directory_listing": true,
+  "expose_files": true,
+  "verbose_errors": true,
+  "headers": [
+    { "source": "/", "set": [
+      ["Set-Cookie", "session_id=8f2a71c9d4e0; Path=/"],
+      ["X-Powered-By", "PHP/7.4.3"]
+    ]}
+  ]
+}

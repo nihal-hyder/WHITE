@@ -14,7 +14,12 @@ from white.database.base import RepositoryError, ScanRecord
 from white.reporting import analytics
 from white.scanner.engine import Progress
 from white.scanner.models import FINISHED_STATES, ScanReport, ScanState
-from white.scanner.netsafety import TargetValidationError, normalize_user_url, validate_target_url
+from white.scanner.netsafety import (
+    TargetValidationError,
+    is_local_host,
+    normalize_user_url,
+    validate_target_url,
+)
 
 log = logging.getLogger("white.scans")
 QUEUED_STALE_SECONDS = 600
@@ -39,9 +44,13 @@ def start_scan(
         target = validate_target_url(normalize_user_url(raw_url), config)
     except TargetValidationError as exc:
         raise ScanRequestError(str(exc), code="target") from exc
-    if svc.settings.domain_verification_required and not svc.domains_for(user).is_authorized(
-        user.id, target.host
-    ):
+    # Scanning your own machine (a loopback/private target you've opted into) can't be verified by
+    # DNS and is self-authorising, so it skips domain verification. Hosted mode forces
+    # allow_private_targets off, so this waiver never applies there.
+    needs_verification = svc.settings.domain_verification_required and not (
+        svc.settings.allow_private_targets and is_local_host(target.host)
+    )
+    if needs_verification and not svc.domains_for(user).is_authorized(user.id, target.host):
         raise ScanRequestError(
             f"Ownership of {target.host} has not been verified. Add and verify the domain on the "
             "Domains page before scanning it.",

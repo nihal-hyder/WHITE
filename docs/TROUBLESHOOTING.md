@@ -6,7 +6,7 @@
 | PowerShell refuses to run `Activate.ps1` | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or call `.venv\Scripts\white.exe` directly. |
 | `py -3.13` not found / Python too old | WHITE needs Python 3.11+. Install from python.org and recreate the venv. |
 | "Target refused: ... loopback/private addresses are not permitted" | By design. For your own development server use `--allow-private-network` (CLI) or `WHITE_ALLOW_PRIVATE_TARGETS=true` (GUI, local only). |
-| "Port N is not permitted" | Only ports 80, 443, 8080 and 8443 are allowed. |
+| "Port N is not permitted" | Only ports 80, 443, 8080 and 8443 are allowed for public targets. For your own machine, add `--allow-private-network` to permit any port. |
 | Scan status "failed" | The website could not be reached (DNS failure, timeout, connection refused). The report lists the exact error. No conclusions are drawn. |
 | Many checks show "Error" | The main page could not be fetched. Check the address and that the site is online. |
 | HTTPS certificate finding on a valid site | WHITE verifies certificates against the `certifi` CA bundle. Corporate TLS inspection proxies are not used (proxies are ignored), but a network that intercepts TLS can cause this. |

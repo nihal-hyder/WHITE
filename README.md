@@ -54,7 +54,7 @@ WHITE/
     database/            SQLite and Supabase repositories
     web/                 Jinja2 templates, CSS, JS, vendored Chart.js
   supabase/migrations/   SQL schema with Row Level Security
-  demo-site/             local test website (weak / hardened)
+  demo-site/             local "VELOUR" test storefront (weak / hardened)
   app.py, vercel.json    Vercel entrypoint and configuration
   tests/                 unit/, integration/, security/
   docs/                  ARCHITECTURE, SECURITY, CLI_GUIDE, GUI_GUIDE, SUPABASE_SETUP,
@@ -124,8 +124,10 @@ Check with `white config` and `white doctor`.
 
 ## Try it without owning a website
 
-`demo-site/` contains a small fictional website you run on your own computer, with a "weak" and a
-"hardened" configuration. See [demo-site/README.md](demo-site/README.md):
+`demo-site/` is a complete, good-looking clothing & footwear store ("VELOUR") you run on your own
+computer — browse, add to cart, checkout, and an admin orders dashboard. It has a "weak"
+configuration (around 20 real findings) and a "hardened" one (2, both HTTPS-related). See
+[demo-site/README.md](demo-site/README.md):
 
 ```powershell
 python demo-site\serve.py                                                  # window 1

@@ -1,30 +1,36 @@
-# WHITE demo site
+# VELOUR — WHITE demo storefront
 
-A small, fictional website ("Northwind Coffee Roasters") that you own and run **on your own
-computer**, so you can test WHITE without owning a public website and without breaking any
-hosting provider's rules.
+A complete, good-looking **clothing & footwear** store that you run on your own computer, so you
+can test WHITE without owning a public website and without breaking any hosting provider's rules.
 
-It has two configurations:
+It is a real, working front end: browse the shop, open a product, pick a size, add to the bag,
+change quantities, go through a checkout, and sign in as a customer or as staff (the admin console
+shows an orders dashboard). The cart lives in your browser (localStorage); nothing is sent anywhere,
+no payment is taken and **no card details are ever requested**.
 
-| Configuration | What it contains |
+It ships in two configurations:
+
+| Configuration | What the server does |
 | --- | --- |
-| `weak` (default) | Missing security headers, an insecure cookie, a version banner, a password form that submits over HTTP using GET, mixed content, a credential-like HTML comment, revealing robots.txt and sitemap entries |
-| `hardened` | Security headers, a protected cookie, no version banner, a safe form |
+| **weak** (default) | No security headers, an insecure session cookie, an `Apache/PHP` version banner, directory listings enabled, well-known sensitive files exposed (`/.env`, `/.git/HEAD`, `/.DS_Store`, `/server-status`, `/phpinfo.php`), a debug error page, an insecure newsletter form, and revealing `robots.txt` / `sitemap.xml` |
+| **hardened** | A strong Content-Security-Policy, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, a `Secure`/`HttpOnly`/`SameSite` cookie, no version banner, directory listings off, sensitive files not served, a clean 404, and tidy `robots.txt` / `sitemap.xml` |
 
-## Use it
+These are **real server misconfigurations**, not fake data and not exploitable code. WHITE finds them
+by actually scanning the running site.
 
-Open two PowerShell windows in the WHITE folder.
+## Run it
 
-**Window 1 - start the demo site**
+Open two terminals in the WHITE folder (activate the virtual environment in each).
+
+**Terminal 1 — start the store**
 ```powershell
-.\.venv\Scripts\Activate.ps1
 python demo-site\serve.py
 ```
-It runs at `http://127.0.0.1:8443/` and listens only on your computer.
+It serves at `http://127.0.0.1:8443/` and listens only on your computer. Open it in a browser to
+shop around.
 
-**Window 2 - scan it with the CLI**
+**Terminal 2 — scan it with the CLI**
 ```powershell
-.\.venv\Scripts\Activate.ps1
 white scan http://127.0.0.1:8443/ --authorized --allow-private-network
 ```
 
@@ -33,22 +39,79 @@ white scan http://127.0.0.1:8443/ --authorized --allow-private-network
 $env:SUPABASE_URL=""; $env:SUPABASE_PUBLISHABLE_KEY=""; $env:WHITE_ALLOW_PRIVATE_TARGETS="true"
 white serve
 ```
-Open http://127.0.0.1:8000, choose **New scan**, enter `http://127.0.0.1:8443/`.
+Open <http://127.0.0.1:8000>, choose **New scan**, enter `http://127.0.0.1:8443/`, tick the
+authorization box and start. The report, charts and PDF all work.
 
-## See improvement over time
+## Show both at once (vulnerable vs fixed, side by side)
 
-1. Scan the `weak` site (above).
-2. Stop the demo site (Ctrl+C) and run `python demo-site\switch.py hardened`.
-3. Start it again with `python demo-site\serve.py` and scan again.
-4. The dashboard's **Progress over time** chart and the report comparison now show which issues are
-   no longer detected. In testing, hardening resolved 10 of 15 findings. The remaining ones are real
-   for a local site: no HTTPS on your own computer, Python's built-in folder listing, and the
-   robots/sitemap notes.
+To present "this one has vulnerabilities, this one doesn't" live, run **both** configurations at the
+same time on two ports, in two separate terminals:
 
-Run `python demo-site\switch.py weak` to reset.
+**Terminal 1 — the vulnerable store**
+```powershell
+python demo-site\serve.py weak 8443
+```
 
-## Why not host it for free?
+**Terminal 2 — the fixed store**
+```powershell
+python demo-site\serve.py hardened 8444
+```
 
-Free plans of common hosts do not allow security testing of the sites they host: Vercel Hobby does
-not permit it, Netlify requires written permission, and Cloudflare restricts testing to domains you
-register yourself. Running the demo locally avoids all of that.
+Now open both in your browser — `http://127.0.0.1:8443/` (vulnerable) and
+`http://127.0.0.1:8444/` (fixed) — they look identical. Then scan each (in a third terminal, or
+two tabs of the GUI):
+
+```powershell
+white scan http://127.0.0.1:8443/ --authorized --allow-private-network   # ~20 findings
+white scan http://127.0.0.1:8444/ --authorized --allow-private-network   # 2 findings
+```
+
+The vulnerable one reports around 20 findings (including a Critical `.env` exposure); the fixed one
+reports 2 (both only because localhost has no HTTPS — see below). Put the two reports next to each
+other and the difference is obvious.
+
+> `--allow-private-network` is what lets WHITE scan your own machine; it also lets you use a second
+> local port like 8444. Never use it against websites that are not yours.
+
+## See the difference (one site, switch back and forth)
+
+1. With the store on its default **weak** configuration, scan it. WHITE reports around **20**
+   findings, including a **Critical** exposed `.env`, two **High** issues, and a spread of
+   Medium/Low/Informational ones.
+2. Stop the store (Ctrl+C), run `python demo-site\switch.py hardened`, start it again
+   (`python demo-site\serve.py`) and scan once more.
+3. WHITE now reports just **2** findings, and the dashboard's **Progress over time** chart (or the
+   report's comparison) shows **18 issues no longer detected**.
+
+Run `python demo-site\switch.py weak` to go back.
+
+### The two findings that remain in hardened mode
+
+Both are because the demo runs on plain `http://` on your computer, where there is no HTTPS:
+
+- **Website is not available over HTTPS**
+- **Form sends information over an unencrypted connection** (any form on an HTTP page is, by
+  definition, submitted without encryption)
+
+On a real site served over HTTPS, both of these clear as well. They are left visible on purpose, as
+an honest reminder that you cannot fully secure a site without HTTPS.
+
+## What's inside
+
+```
+demo-site/
+  serve.py              local web server that applies the active configuration
+  switch.py             swap between weak and hardened
+  active-config.json    the configuration currently in use (written by switch.py)
+  public/               the storefront (shared pages, CSS, JS, product images)
+    index.html          home (swapped per configuration)
+    shop, product, cart, checkout, login, account pages
+    admin/              staff login + orders dashboard
+  configs/              the weak and hardened variants of index / config / robots / sitemap
+  weak-extras/          the sensitive files served only in weak mode (safe, clearly-labelled demos)
+```
+
+Everything served is static and harmless. The admin and customer logins are demonstration gates
+only (any details proceed); there is no real authentication, database or payment, and nothing is
+stored on a server. This keeps the project safe to run locally while still giving WHITE a realistic,
+full storefront to scan.

@@ -325,3 +325,29 @@ def test_domain_verification_default_on_in_supabase_mode(tmp_path, supa):
     login(client, "n@example.com")
     r = start_scan(client)
     assert r.status_code == 403 and r.json()["code"] == "domain_unverified"
+
+
+def test_local_targets_skip_domain_verification(tmp_path, supa):
+    """In local accounts mode with private scanning enabled, your own machine needs no domain
+    verification; public hosts still do."""
+    supa.add_user("local@example.com", PASSWORD)
+    client = make_client(
+        tmp_path, supabase=supa, WHITE_ALLOW_PRIVATE_TARGETS="true"
+    )  # domain verification stays on by default in accounts mode
+    login(client, "local@example.com")
+    token = csrf(client)
+    # loopback target: allowed straight through
+    local = client.post(
+        "/api/scans",
+        json={"url": "http://127.0.0.1:8444/", "authorized": True},
+        headers={"X-CSRF-Token": token},
+    )
+    assert local.status_code == 202, local.text
+    wait_for_scan(client, local.json()["scan_id"])
+    # a public host is still gated on verification
+    public = client.post(
+        "/api/scans",
+        json={"url": "https://not-mine.example.com", "authorized": True},
+        headers={"X-CSRF-Token": token},
+    )
+    assert public.status_code == 403 and public.json()["code"] == "domain_unverified"

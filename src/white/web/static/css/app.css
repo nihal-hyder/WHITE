@@ -348,3 +348,71 @@ details[open] summary { margin-bottom: 8px; }
 .panel > h1, .narrow > h1, .medium > h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 3.2vw, 2.6rem); letter-spacing: -0.02em; }
 .narrow.panel { padding: 36px; box-shadow: var(--shadow); }
 .stat-value .small, .stat-value .muted { font-family: var(--font-sans); font-size: 1rem; letter-spacing: 0; margin-left: 4px; }
+
+/* ------------------------------------------------------------------ animated scan progress */
+.scan-stage-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 32px; box-shadow: var(--shadow-sm); }
+.scan-hero { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+.scan-hero-text { flex: 1; min-width: 220px; }
+.scan-stage-now { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.4rem, 2.6vw, 2rem);
+  margin: 10px 0 8px; min-height: 1.2em; transition: opacity .25s var(--ease); }
+.scan-elapsed { font-variant-numeric: tabular-nums; }
+
+/* Progress ring */
+.scan-ring { position: relative; width: 168px; height: 168px; flex: none; }
+.scan-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.scan-ring .ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 8; }
+.scan-ring .ring-fg { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+  stroke-dasharray: 339.29; stroke-dashoffset: 339.29; transition: stroke-dashoffset .6s var(--ease), stroke .4s; }
+.scan-ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; }
+.scan-ring-label .pct { font-family: var(--font-display); font-size: 2.6rem; line-height: 1; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.scan-ring-label .pct small { font-size: 1.1rem; color: var(--muted); }
+.scan-ring-label .count { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  margin-top: 6px; }
+/* Rotating radar sweep */
+.scan-sweep { position: absolute; inset: 14px; border-radius: 50%; overflow: hidden; pointer-events: none;
+  -webkit-mask: radial-gradient(circle, transparent 54%, #000 55%); mask: radial-gradient(circle, transparent 54%, #000 55%); }
+.scan-sweep::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(29,107,78,.28) 60deg, transparent 90deg);
+  animation: sweep 1.6s linear infinite; }
+@keyframes sweep { to { transform: rotate(360deg); } }
+.is-finished .scan-sweep { display: none; }
+
+/* Pulsing ring while running */
+.scan-stage-card:not(.is-finished) .ring-fg { animation: ringpulse 2.2s ease-in-out infinite; }
+@keyframes ringpulse { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
+
+/* Checklist */
+.scan-checklist { list-style: none; margin: 28px 0 8px; padding: 18px 0 0; border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px 28px; }
+@media (max-width: 640px) { .scan-checklist { grid-template-columns: 1fr; } }
+.scan-check { display: flex; align-items: center; gap: 12px; padding: 9px 4px; border-radius: 8px;
+  opacity: .5; transition: opacity .35s var(--ease), background .35s var(--ease); }
+.scan-check-name { font-size: .92rem; font-weight: 500; }
+.scan-check-cat { font-size: .74rem; margin-left: auto; white-space: nowrap; }
+.scan-check-icon { position: relative; width: 22px; height: 22px; flex: none; display: grid; place-items: center; }
+.scan-check-icon .ic-dot { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--border-strong); }
+.scan-check-icon .ic-spin { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent); animation: spin .7s linear infinite; display: none; }
+.scan-check-icon .ic-tick { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; display: none; stroke-dasharray: 16; stroke-dashoffset: 16; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes tickdraw { to { stroke-dashoffset: 0; } }
+
+.scan-check.is-pending { opacity: .5; }
+.scan-check.is-active { opacity: 1; background: var(--accent-soft); }
+.scan-check.is-active .ic-dot { display: none; }
+.scan-check.is-active .ic-spin { display: block; }
+.scan-check.is-done { opacity: 1; }
+.scan-check.is-done .ic-dot, .scan-check.is-done .ic-spin { display: none; }
+.scan-check.is-done .scan-check-icon { background: var(--accent); border-radius: 50%; }
+.scan-check.is-done .ic-tick { display: block; animation: tickdraw .4s var(--ease) forwards; }
+
+.scan-actions { margin-top: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-sweep::before, .scan-check-icon .ic-spin, .ring-fg { animation: none !important; }
+  .scan-check.is-done .ic-tick { stroke-dashoffset: 0; }
+}

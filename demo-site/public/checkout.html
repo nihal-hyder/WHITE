@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout &mdash; VELOUR</title>
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/store.css">
+</head>
+<body>
+  <div class="topbar"><div class="wrap">Free carbon-neutral delivery over $150 &middot; 30-day returns</div></div>
+  <header class="site-head"><div class="wrap">
+    <a class="brand" href="/">VEL<b>O</b>UR</a>
+    <nav class="nav">
+      <a href="/shop.html">Shop all</a>
+      <a href="/shop.html?category=women">Women</a>
+      <a href="/shop.html?category=men">Men</a>
+      <a href="/shop.html?category=footwear">Footwear</a>
+    </nav>
+    <div class="head-actions">
+      <a href="/login.html">Account</a>
+      <a class="cart-link" href="/cart.html">Bag<span class="cart-count" data-cart-count>0</span></a>
+    </div>
+  </div></header>
+
+  <div class="wrap">
+    <div class="crumb"><a href="/">Home</a> / <a href="/cart.html">Bag</a> / Checkout</div>
+    <div data-checkout>
+      <h1 style="font-size:2.2rem">Checkout</h1>
+      <p class="demo-pill">Demonstration checkout &mdash; no payment is taken and no card details are requested.</p>
+      <div class="checkout-grid" style="margin-top:24px">
+        <form class="panel" data-checkout-form novalidate>
+          <div class="step-title">Contact</div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required placeholder="you@example.com">
+          <div class="step-title">Shipping address</div>
+          <div class="row2">
+            <div><label for="fn">First name</label><input id="fn" name="fn" required></div>
+            <div><label for="ln">Last name</label><input id="ln" name="ln" required></div>
+          </div>
+          <label for="addr">Address</label>
+          <input id="addr" name="addr" required placeholder="221B Baker Street">
+          <div class="row2">
+            <div><label for="city">City</label><input id="city" name="city" required></div>
+            <div><label for="zip">Postcode</label><input id="zip" name="zip" required></div>
+          </div>
+          <div class="step-title">Delivery method</div>
+          <label for="ship">Option</label>
+          <select id="ship" name="ship"><option>Standard &mdash; 3-5 days</option><option>Express &mdash; next day</option></select>
+          <div class="step-title">Payment</div>
+          <p class="formnote">This is a demonstration store, so there is no payment step and no card
+          details are collected. Choosing &ldquo;Place order&rdquo; simply shows a sample confirmation.</p>
+          <button class="btn block" type="submit" style="margin-top:18px">Place order</button>
+        </form>
+        <aside class="summary">
+          <h3>Order summary</h3>
+          <div data-checkout-summary></div>
+          <p class="formnote center" style="margin-top:12px">Demo order &mdash; nothing is charged or shipped.</p>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div style="height:40px"></div>
+  <footer class="site-foot">
+    <div class="wrap">
+      <div><a class="brand" href="/">VEL<b>O</b>UR</a><p>Considered clothing and footwear, made to last. A demonstration storefront used to test the WHITE security scanner.</p></div>
+      <div><h4>Shop</h4><ul><li><a href="/shop.html?category=women">Women</a></li><li><a href="/shop.html?category=men">Men</a></li><li><a href="/shop.html?category=footwear">Footwear</a></li><li><a href="/shop.html">New in</a></li></ul></div>
+      <div><h4>Help</h4><ul><li><a href="/shop.html">Delivery</a></li><li><a href="/shop.html">Returns</a></li><li><a href="/login.html">Account</a></li><li><a href="/admin/">Staff login</a></li></ul></div>
+      <div><h4>Studio</h4><ul><li><a href="/">About</a></li><li><a href="/">Sustainability</a></li><li><a href="/">Careers</a></li></ul></div>
+    </div>
+    <div class="foot-bottom"><div class="wrap"><span>&copy; 2026 VELOUR &mdash; demonstration store</span><span>Not a real retailer. No orders are fulfilled.</span></div></div>
+  </footer>
+  <script src="/assets/js/catalog.js"></script>
+  <script src="/assets/js/checkout.js"></script>
+</body>
+</html>

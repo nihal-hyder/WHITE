@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /backup/
+Disallow: /config/
+Disallow: /.git/
+Disallow: /includes/
+Sitemap: http://127.0.0.1:8443/sitemap.xml

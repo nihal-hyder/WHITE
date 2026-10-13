@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orders &mdash; VELOUR console</title>
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/store.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="admin-side">
+      <a class="brand" href="/admin/dashboard.html">VEL<b>O</b>UR</a>
+      <a class="active" href="/admin/dashboard.html">Orders</a>
+      <a href="/admin/dashboard.html">Products</a>
+      <a href="/admin/dashboard.html">Customers</a>
+      <a href="/admin/dashboard.html">Settings</a>
+      <a href="/" style="margin-top:20px">&larr; Back to store</a>
+    </aside>
+    <main class="admin-main">
+      <h1>Orders</h1>
+      <p class="muted">Demonstration data &mdash; not real customers.</p>
+      <div class="stat-row">
+        <div class="stat"><div class="k">Revenue (7d)</div><div class="v" data-stat-revenue>$0</div></div>
+        <div class="stat"><div class="k">Orders</div><div class="v">6</div></div>
+        <div class="stat"><div class="k">Pending</div><div class="v">2</div></div>
+        <div class="stat"><div class="k">Avg. order</div><div class="v">$310</div></div>
+      </div>
+      <table class="orders" data-admin-orders></table>
+    </main>
+  </div>
+  <script src="/assets/js/catalog.js"></script>
+  <script src="/assets/js/admin.js"></script>
+</body>
+</html>
