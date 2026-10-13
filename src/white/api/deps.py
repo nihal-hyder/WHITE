@@ -14,7 +14,8 @@ from fastapi import HTTPException, Request
 from white.api.jobs import JobManager
 from white.api.security import SESSION_COOKIE, RateLimiter, csrf_valid, same_origin
 from white.auth.domains import DomainStore
-from white.auth.sessions import SessionData, SessionStore
+from white.auth.domains_supabase import SupabaseDomainStore
+from white.auth.sessions import CookieSessionStore, SessionData, SessionStore
 from white.auth.supabase_auth import AuthError, AuthSession, SupabaseAuthClient
 from white.config import Settings
 from white.database.base import ScanRepository
@@ -37,7 +38,7 @@ class Services:
     settings: Settings
     db: SQLiteDatabase
     local_repo: SQLiteScanRepository
-    sessions: SessionStore
+    sessions: SessionStore | CookieSessionStore
     domains: DomainStore
     jobs: JobManager
     auth: SupabaseAuthClient | None
@@ -46,6 +47,7 @@ class Services:
     supabase_transport: Any = None  # injectable for tests
     _refresh_lock: threading.Lock = field(default_factory=threading.Lock)
     _bearer_cache: dict[str, tuple[float, str, str]] = field(default_factory=dict)
+    _validated: dict[str, float] = field(default_factory=dict)
 
     @property
     def secret(self) -> str:
@@ -90,7 +92,44 @@ class Services:
             self.settings.supabase_publishable_key,
             user.token_supplier,
             transport=self.supabase_transport,
+            inline_columns=self.settings.execution_mode == "inline",
         )
+
+    def domains_for(self, user: CurrentUser) -> DomainStore | SupabaseDomainStore:
+        """Serverless deployments keep verification in Supabase (signed); others in local SQLite."""
+        if self.settings.is_serverless and user.mode == "supabase":
+            assert self.settings.supabase_url and self.settings.supabase_publishable_key
+            return SupabaseDomainStore(
+                self.settings.supabase_url,
+                self.settings.supabase_publishable_key,
+                user.token_supplier,
+                self.secret,
+                transport=self.supabase_transport,
+            )
+        return self.domains
+
+    def session_still_valid(self, session: SessionData) -> bool:
+        """Stateless sessions cannot be deleted server-side, so confirm with Supabase that the
+        session behind the access token still exists (sign-out revokes it). Cached briefly."""
+        if not getattr(self.sessions, "stateless", False):
+            return True
+        assert self.auth is not None
+        key = hashlib.sha256(session.access_token.encode()).hexdigest()
+        now = time.time()
+        if self._validated.get(key, 0) > now:
+            return True
+        try:
+            user = self.auth.get_user(session.access_token)
+        except AuthError as exc:
+            if exc.status in {401, 403, 404}:
+                return False
+            raise
+        if user.get("id") != session.user_id:
+            return False
+        if len(self._validated) > 5000:
+            self._validated.clear()
+        self._validated[key] = now + 30
+        return True
 
 
 @dataclass
@@ -144,8 +183,10 @@ def optional_user(request: Request) -> CurrentUser | None:
     if session is None or session.purpose != "login":
         return None
     fresh = svc.fresh_session(session)
-    if fresh is None:
+    if fresh is None or not svc.session_still_valid(fresh):
         request.state.session_expired = True
+        if fresh is not None:
+            svc.sessions.delete_hash(fresh.id_hash)
         return None
     return CurrentUser(
         id=fresh.user_id,
@@ -154,6 +195,16 @@ def optional_user(request: Request) -> CurrentUser | None:
         token_supplier=svc.token_supplier(fresh.id_hash),
         session=fresh,
     )
+
+
+def client_ip(request: Request) -> str:
+    """The visitor's IP. Behind a trusted proxy (e.g. Vercel) use its forwarded headers."""
+    svc = services(request)
+    if svc.settings.proxy_headers_trusted:
+        real = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0]
+        if real.strip():
+            return real.strip()[:64]
+    return request.client.host if request.client else "unknown"
 
 
 def require_user(request: Request) -> CurrentUser:

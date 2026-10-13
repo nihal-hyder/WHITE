@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northwind Coffee Roasters (WHITE demo site)</title>
+  <link rel="stylesheet" href="/assets/site.css">
+  <!-- Deliberate weakness for testing: a script loaded over plain HTTP (active mixed content). -->
+  <script src="http://cdn.example.com/analytics.js"></script>
+</head>
+<body>
+  <!-- TODO remove before launch: admin password: changeme123 -->
+  <header class="bar">
+    <strong>Northwind Coffee Roasters</strong>
+    <span class="tag">Demo site for testing WHITE - not a real business</span>
+  </header>
+  <main>
+    <section class="hero">
+      <h1>Small-batch coffee, roasted weekly.</h1>
+      <p>This page is intentionally misconfigured so WHITE has something to find.</p>
+      <img src="http://images.example.com/beans.jpg" alt="Coffee beans (deliberately loaded over HTTP)">
+    </section>
+    <section class="card">
+      <h2>Wholesale partner login</h2>
+      <!-- Deliberate weaknesses: form submits over HTTP and uses GET with a password field. -->
+      <form action="http://northwind-demo.example.com/login" method="get">
+        <label>Email <input type="email" name="email"></label>
+        <label>Password <input type="password" name="password"></label>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+  </main>
+  <footer>Demo content only. Configuration: <b>weak</b>.</footer>
+</body>
+</html>

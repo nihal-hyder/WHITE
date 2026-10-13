@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from white.api.deps import (
     CurrentUser,
     Services,
+    client_ip,
     optional_user,
     require_user,
     services,
@@ -48,8 +49,7 @@ def _set_session_cookie(response: Response, svc: Services, token: str) -> None:
 
 
 def _client_key(request: Request, email: str = "") -> str:
-    host = request.client.host if request.client else "unknown"
-    return f"{host}|{email.lower()}"
+    return f"{client_ip(request)}|{email.lower()}"
 
 
 def _password_problem(password: str, confirm: str) -> str | None:

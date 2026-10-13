@@ -10,7 +10,7 @@ ruff check src tests      # lint
 ruff format --check src tests
 ```
 
-Last verified run (Windows 11, Python 3.13.7): **161 passed**, ruff clean.
+Last verified run (Windows 11, Python 3.13.7): **171 passed**, ruff clean.
 
 ## What is covered
 
@@ -29,6 +29,8 @@ Last verified run (Windows 11, Python 3.13.7): **161 passed**, ruff clean.
 | GUI pages, security headers, Host header, CSRF, scan flow, downloads, chart data consistency, domain verification | `tests/integration/test_web_local.py` |
 | Sign-up (with/without confirmation), duplicates, login errors, rate limiting, open redirect, session cookie, logout invalidation, token refresh, revoked sessions, bearer API, password reset, callback flow, change password, sign out everywhere | `tests/integration/test_web_supabase.py` |
 | Cross-user isolation (pages, API, downloads, delete, cancel) | same |
+| Serverless mode: configuration guard, encrypted cookie sessions, revocation, token refresh cookie, forged domain rows rejected, request-scoped scans, cross-user isolation, cancel, forwarded client IP | `tests/integration/test_serverless.py` |
+| Every link, anchor, form target and static file resolves | `tests/integration/test_links.py` |
 | Local repository ownership, encrypted sessions, filename sanitisation, JSON-in-script escaping | `tests/security/test_app_security.py` |
 
 ## Test infrastructure

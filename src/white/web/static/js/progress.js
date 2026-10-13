@@ -60,5 +60,20 @@
         }
       });
   }
+  // Serverless hosting: the scan runs inside this request; progress is read by polling.
+  if (root.getAttribute("data-run") === "yes") {
+    var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+    fetch("/api/scans/" + encodeURIComponent(scanId) + "/run", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-CSRF-Token": csrf }
+    }).then(function (r) {
+      if (r.ok || r.status === 409) return;
+      return r.json().then(function (body) {
+        errorBox.textContent = body.detail || "The scan could not be started.";
+        errorBox.hidden = false;
+      });
+    }).catch(function () { /* the status poll reports the final state */ });
+  }
   poll();
 })();

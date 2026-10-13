@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 import re
+import threading
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from white.api.deps import CurrentUser, Services
 from white.api.jobs import JobRejected
 from white.database.base import RepositoryError, ScanRecord
 from white.reporting import analytics
+from white.scanner.engine import Progress
 from white.scanner.models import FINISHED_STATES, ScanReport, ScanState
 from white.scanner.netsafety import TargetValidationError, normalize_user_url, validate_target_url
+
+log = logging.getLogger("white.scans")
+QUEUED_STALE_SECONDS = 600
 
 
 class ScanRequestError(Exception):
@@ -33,7 +39,9 @@ def start_scan(
         target = validate_target_url(normalize_user_url(raw_url), config)
     except TargetValidationError as exc:
         raise ScanRequestError(str(exc), code="target") from exc
-    if svc.settings.domain_verification_required and not svc.domains.is_authorized(user.id, target.host):
+    if svc.settings.domain_verification_required and not svc.domains_for(user).is_authorized(
+        user.id, target.host
+    ):
         raise ScanRequestError(
             f"Ownership of {target.host} has not been verified. Add and verify the domain on the "
             "Domains page before scanning it.",
@@ -41,6 +49,8 @@ def start_scan(
             code="domain_unverified",
         )
     scan_id = str(uuid.uuid4())
+    if svc.settings.execution_mode == "inline":
+        return _create_inline(svc, user, scan_id, target.url, target.host, active_checks)
     try:
         job = svc.jobs.reserve(user.id, target.url, scan_id)
     except JobRejected as exc:
@@ -73,6 +83,112 @@ def start_scan(
     return scan_id
 
 
+def _create_inline(
+    svc: Services, user: CurrentUser, scan_id: str, url: str, host: str, active_checks: bool
+) -> str:
+    """Serverless: only record the scan here. The browser then calls run_scan_inline()."""
+    repo = svc.repo_for(user)
+    now = datetime.now(UTC)
+    active_window = now - timedelta(seconds=svc.settings.max_scan_seconds + QUEUED_STALE_SECONDS)
+    if repo.count_scans_since(user.id, active_window, {"queued", "running"}) > 0:
+        raise ScanRequestError(
+            "You already have a scan in progress. Wait for it to finish or cancel it.",
+            status_code=409,
+            code="limit",
+        )
+    if repo.count_scans_since(user.id, now - timedelta(hours=1)) >= svc.settings.scans_per_user_per_hour:
+        raise ScanRequestError(
+            "You have reached the hourly scan limit. Please try again later.", status_code=429, code="limit"
+        )
+    try:
+        repo.create_scan(
+            user.id,
+            ScanRecord(
+                id=scan_id,
+                owner_id=user.id,
+                target_url=url,
+                hostname=host,
+                state=ScanState.QUEUED,
+                created_at=now,
+                active_checks=active_checks,
+            ),
+        )
+    except RepositoryError as exc:
+        raise ScanRequestError(str(exc), status_code=503, code="storage") from exc
+    return scan_id
+
+
+def run_scan_inline(svc: Services, user: CurrentUser, scan_id: str) -> dict:
+    """Run a queued scan inside the current request (serverless hosting).
+
+    Progress and cancellation go through the database so any server instance can report them.
+    Claiming is atomic (queued -> running), so a scan can only ever run once.
+    """
+    record = get_record(svc, user, scan_id)
+    if record is None:
+        raise ScanRequestError("Scan not found.", status_code=404, code="not_found")
+    repo = svc.repo_for(user)
+    if not repo.claim_scan(user.id, scan_id):
+        raise ScanRequestError("This scan has already started or finished.", status_code=409, code="claimed")
+    config = svc.settings.scan_config(active_checks=record.active_checks)
+    cancel = threading.Event()
+
+    def on_progress(p: Progress) -> None:
+        try:
+            current = repo.get_scan(user.id, scan_id)
+            if current is not None and current.cancel_requested:
+                cancel.set()
+            repo.update_progress(
+                user.id, scan_id, {"stage": p.stage, "completed": p.completed, "total": p.total}
+            )
+        except Exception:  # noqa: BLE001 - progress reporting must never break the scan
+            log.warning("could not record progress for scan %s", scan_id)
+
+    try:
+        report = svc.jobs.scanner_factory(config).run(
+            record.target_url, scan_id=scan_id, progress=on_progress, cancel_event=cancel
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.exception("inline scan %s crashed", scan_id)
+        repo.mark_state(
+            user.id, scan_id, ScanState.FAILED, f"The scan could not run: {exc.__class__.__name__}"
+        )
+        raise ScanRequestError("The scan could not run.", status_code=500, code="failed") from exc
+    repo.save_report(user.id, scan_id, report)
+    updated = repo.get_scan(user.id, scan_id)
+    return (
+        status_payload(svc, user, updated) if updated else {"scan_id": scan_id, "state": report.state.value}
+    )
+
+
+def cancel_scan(svc: Services, user: CurrentUser, record: ScanRecord) -> bool:
+    if svc.settings.execution_mode != "inline":
+        return svc.jobs.cancel(record.id, user.id)
+    repo = svc.repo_for(user)
+    if record.state == ScanState.QUEUED:
+        repo.mark_state(user.id, record.id, ScanState.CANCELLED, "Cancelled before it started.")
+        return True
+    return repo.request_cancel(user.id, record.id)
+
+
+def _inline_is_stale(svc: Services, record: ScanRecord) -> bool:
+    now = datetime.now(UTC)
+    if record.state == ScanState.RUNNING:
+        started = record.started_at or record.created_at
+        return (now - started).total_seconds() > svc.settings.max_scan_seconds + 120
+    return (now - record.created_at).total_seconds() > QUEUED_STALE_SECONDS
+
+
+def prepare_delete(svc: Services, user: CurrentUser, record: ScanRecord) -> None:
+    """Allow deleting inline scans that were abandoned (they would otherwise stay 'running')."""
+    if (
+        svc.settings.execution_mode == "inline"
+        and record.state in {ScanState.QUEUED, ScanState.RUNNING}
+        and _inline_is_stale(svc, record)
+    ):
+        svc.repo_for(user).mark_state(user.id, record.id, ScanState.INTERRUPTED, "The scan did not finish.")
+
+
 def get_record(svc: Services, user: CurrentUser, scan_id: str) -> ScanRecord | None:
     try:
         uuid.UUID(scan_id)
@@ -82,6 +198,25 @@ def get_record(svc: Services, user: CurrentUser, scan_id: str) -> ScanRecord | N
 
 
 def status_payload(svc: Services, user: CurrentUser, record: ScanRecord) -> dict:
+    if (
+        svc.settings.execution_mode == "inline"
+        and record.state in {ScanState.QUEUED, ScanState.RUNNING}
+        and not _inline_is_stale(svc, record)
+    ):
+        progress = record.progress or {}
+        started = record.started_at
+        return {
+            "scan_id": record.id,
+            "state": record.state.value,
+            "stage": progress.get("stage")
+            or ("Waiting to start" if record.state == ScanState.QUEUED else "Starting"),
+            "completed_checks": int(progress.get("completed") or 0),
+            "total_checks": int(progress.get("total") or 0),
+            "elapsed_seconds": round((datetime.now(UTC) - started).total_seconds(), 1) if started else 0.0,
+            "error": None,
+            "live": True,
+            "run_required": record.state == ScanState.QUEUED,
+        }
     job = svc.jobs.get(record.id, user.id)
     if job is not None and (job.state not in FINISHED_STATES or record.state not in FINISHED_STATES):
         return job.to_status()

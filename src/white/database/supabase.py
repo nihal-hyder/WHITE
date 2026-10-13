@@ -19,8 +19,9 @@ from white.scanner.models import ScanReport, ScanState
 
 LIST_COLUMNS = (
     "id,user_id,target_url,hostname,state,active_checks,created_at,finished_at,"
-    "findings_total,high_priority,error"
+    "findings_total,high_priority,error,started_at"
 )
+INLINE_COLUMNS = ",progress,cancel_requested"  # added by migration 20261013095149
 
 
 class SessionExpiredError(RepositoryError):
@@ -43,7 +44,9 @@ class SupabaseScanRepository:
         token_supplier: Callable[[], str],
         *,
         transport: httpx.BaseTransport | None = None,
+        inline_columns: bool = False,
     ) -> None:
+        self._columns = LIST_COLUMNS + (INLINE_COLUMNS if inline_columns else "")
         self._base = f"{url}/rest/v1"
         self._key = publishable_key
         self._token = token_supplier
@@ -94,6 +97,9 @@ class SupabaseScanRepository:
             high_priority=row.get("high_priority") or 0,
             error=row.get("error"),
             report=report,
+            started_at=datetime.fromisoformat(row["started_at"]) if row.get("started_at") else None,
+            progress=row.get("progress") if isinstance(row.get("progress"), dict) else None,
+            cancel_requested=bool(row.get("cancel_requested")),
         )
 
     def create_scan(self, owner_id: str, record: ScanRecord) -> None:
@@ -178,7 +184,7 @@ class SupabaseScanRepository:
         rows = self._request(
             "GET",
             "scans",
-            params={"id": f"eq.{scan_id}", "user_id": f"eq.{owner_id}", "select": LIST_COLUMNS + ",report"},
+            params={"id": f"eq.{scan_id}", "user_id": f"eq.{owner_id}", "select": self._columns + ",report"},
         ).json()
         return self._record(rows[0]) if rows else None
 
@@ -188,7 +194,7 @@ class SupabaseScanRepository:
             "scans",
             params={
                 "user_id": f"eq.{owner_id}",
-                "select": LIST_COLUMNS,
+                "select": self._columns,
                 "order": "created_at.desc",
                 "limit": str(limit),
             },
@@ -199,7 +205,7 @@ class SupabaseScanRepository:
         params = {
             "user_id": f"eq.{owner_id}",
             "report": "not.is.null",
-            "select": LIST_COLUMNS + ",report",
+            "select": self._columns + ",report",
             "order": "created_at.desc",
             "limit": str(limit),
         }
@@ -218,3 +224,44 @@ class SupabaseScanRepository:
             prefer="return=representation",
         ).json()
         return len(rows) == 1
+
+    # --- inline execution -------------------------------------------------------------------
+    def claim_scan(self, owner_id: str, scan_id: str) -> bool:
+        if not _is_uuid(scan_id):
+            return False
+        rows = self._request(
+            "PATCH",
+            "scans",
+            params={"id": f"eq.{scan_id}", "user_id": f"eq.{owner_id}", "state": "eq.queued"},
+            json={"state": "running", "started_at": datetime.now().astimezone().isoformat()},
+            prefer="return=representation",
+        ).json()
+        return len(rows) == 1
+
+    def update_progress(self, owner_id: str, scan_id: str, progress: dict) -> None:
+        if _is_uuid(scan_id):
+            self._request(
+                "PATCH",
+                "scans",
+                params={"id": f"eq.{scan_id}", "user_id": f"eq.{owner_id}"},
+                json={"progress": progress},
+                prefer="return=minimal",
+            )
+
+    def request_cancel(self, owner_id: str, scan_id: str) -> bool:
+        if not _is_uuid(scan_id):
+            return False
+        rows = self._request(
+            "PATCH",
+            "scans",
+            params={"id": f"eq.{scan_id}", "user_id": f"eq.{owner_id}", "state": "in.(queued,running)"},
+            json={"cancel_requested": True},
+            prefer="return=representation",
+        ).json()
+        return len(rows) == 1
+
+    def count_scans_since(self, owner_id: str, since: datetime, states: set[str] | None = None) -> int:
+        params = {"user_id": f"eq.{owner_id}", "created_at": f"gte.{since.isoformat()}", "select": "id"}
+        if states:
+            params["state"] = f"in.({','.join(sorted(states))})"
+        return len(self._request("GET", "scans", params=params).json())

@@ -14,6 +14,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from white.auth.sessions import PENDING_SESSION_COOKIE
+
 CSRF_COOKIE = "white_csrf"
 SESSION_COOKIE = "white_session"
 
@@ -55,7 +57,29 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             new_cookie = secrets.token_urlsafe(24)
             cookie = new_cookie
         request.state.csrf_cookie = cookie
-        response = await call_next(request)
+        pending: dict = {}
+        token = PENDING_SESSION_COOKIE.set(pending)
+        try:
+            response = await call_next(request)
+        finally:
+            PENDING_SESSION_COOKIE.reset(token)
+        already_set = any(
+            k == b"set-cookie" and v.startswith(SESSION_COOKIE.encode() + b"=")
+            for k, v in response.raw_headers
+        )
+        if not already_set:
+            if pending.get("value"):
+                response.set_cookie(
+                    SESSION_COOKIE,
+                    pending["value"],
+                    httponly=True,
+                    samesite="lax",
+                    secure=self.secure_cookies,
+                    path="/",
+                    max_age=7 * 24 * 3600,
+                )
+            elif pending.get("clear"):
+                response.delete_cookie(SESSION_COOKIE, path="/")
         if new_cookie:
             response.set_cookie(
                 CSRF_COOKIE, new_cookie, httponly=True, samesite="lax", secure=self.secure_cookies, path="/"

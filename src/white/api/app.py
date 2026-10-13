@@ -19,7 +19,7 @@ from white.api.deps import LoginRequired, Services
 from white.api.jobs import JobManager
 from white.api.security import SecurityMiddleware, csrf_token_for
 from white.auth.domains import DomainStore
-from white.auth.sessions import SessionStore
+from white.auth.sessions import CookieSessionStore, SessionStore
 from white.auth.supabase_auth import SupabaseAuthClient
 from white.config import Settings, get_settings
 from white.database.base import RepositoryError
@@ -67,7 +67,11 @@ def build_services(settings: Settings) -> Services:
         settings=settings,
         db=db,
         local_repo=local_repo,
-        sessions=SessionStore(db, settings.effective_secret_key()),
+        sessions=(
+            CookieSessionStore(settings.effective_secret_key())
+            if settings.is_serverless
+            else SessionStore(db, settings.effective_secret_key())
+        ),
         domains=DomainStore(db),
         jobs=JobManager(settings.max_concurrent_scans, settings.scans_per_user_per_hour),
         auth=auth,
@@ -81,11 +85,41 @@ def _allowed_hosts(settings: Settings) -> list[str]:
     site_host = urlsplit(settings.site_url).hostname
     if site_host:
         hosts.add(site_host)
+    hosts.update(settings.deployment_hosts)
     return sorted(hosts)
+
+
+def _misconfigured_app(problems: list[str]) -> FastAPI:
+    """A hosted deployment with unsafe settings serves only an explanation, never the scanner."""
+    from fastapi.responses import HTMLResponse
+
+    app = FastAPI(title="WHITE (configuration required)", docs_url=None, redoc_url=None, openapi_url=None)
+    items = "".join(f"<li>{p}</li>" for p in problems)
+    page = (
+        "<!doctype html><meta charset='utf-8'><title>WHITE - configuration required</title>"
+        "<body style='font-family:system-ui;max-width:640px;margin:64px auto;padding:0 16px;line-height:1.6'>"
+        "<h1>WHITE needs configuration</h1><p>This deployment is not started because:</p>"
+        f"<ul>{items}</ul><p>Set these environment variables in your hosting provider's project settings "
+        "and redeploy. See docs/DEPLOY_VERCEL.md.</p></body>"
+    )
+
+    @app.get("/api/health")
+    def health() -> JSONResponse:
+        return JSONResponse({"status": "misconfigured"}, status_code=503)
+
+    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+    def blocked(path: str) -> HTMLResponse:
+        return HTMLResponse(page, status_code=503)
+
+    log.error("WHITE not started: %s", "; ".join(problems))
+    return app
 
 
 def create_app(settings: Settings | None = None, services: Services | None = None) -> FastAPI:
     settings = settings or (services.settings if services else get_settings())
+    problems = settings.configuration_problems()
+    if problems:
+        return _misconfigured_app(problems)
     if not settings.secret_key:
         log.warning("WHITE_SECRET_KEY is not set; a temporary key is used and sessions reset on restart.")
 

@@ -27,6 +27,9 @@ class ScanRecord:
     high_priority: int = 0
     error: str | None = None
     report: ScanReport | None = None
+    started_at: datetime | None = None
+    progress: dict | None = None  # inline execution: {"stage", "completed", "total"}
+    cancel_requested: bool = False
 
 
 class ScanRepository(Protocol):
@@ -45,3 +48,14 @@ class ScanRepository(Protocol):
     ) -> list[ScanReport]: ...
 
     def delete_scan(self, owner_id: str, scan_id: str) -> bool: ...
+
+    # --- inline (request-scoped) execution, used for serverless hosting ---
+    def claim_scan(self, owner_id: str, scan_id: str) -> bool:
+        """Atomically move a scan from 'queued' to 'running'. Returns False if already claimed."""
+        ...
+
+    def update_progress(self, owner_id: str, scan_id: str, progress: dict) -> None: ...
+
+    def request_cancel(self, owner_id: str, scan_id: str) -> bool: ...
+
+    def count_scans_since(self, owner_id: str, since: datetime, states: set[str] | None = None) -> int: ...

@@ -65,6 +65,15 @@ Implemented in `src/white/scanner/netsafety.py`:
 - For an exposed `.env` file only variable **names** are recorded.
 - URLs in findings have credentials removed and sensitive query values redacted.
 
+## Serverless (Vercel) mode
+
+- Accounts and a strong `WHITE_SECRET_KEY` are mandatory; otherwise only a configuration notice is served.
+- Sessions are Fernet-encrypted cookies (no server storage). Every request re-validates the access
+  token with Supabase Auth (cached 30 s), so signing out revokes access.
+- Domain verification rows live in Supabase but are only trusted with an HMAC signature made with
+  `WHITE_SECRET_KEY`; rows users edit through the public API are ignored.
+- Domain verification is always required; private-network targets cannot be enabled.
+
 ## Known limitations
 
 - The in-process job manager and in-memory rate limits are per process; they reset on restart and do

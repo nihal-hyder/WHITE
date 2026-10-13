@@ -54,6 +54,8 @@ WHITE/
     database/            SQLite and Supabase repositories
     web/                 Jinja2 templates, CSS, JS, vendored Chart.js
   supabase/migrations/   SQL schema with Row Level Security
+  demo-site/             local test website (weak / hardened)
+  app.py, vercel.json    Vercel entrypoint and configuration
   tests/                 unit/, integration/, security/
   docs/                  ARCHITECTURE, SECURITY, CLI_GUIDE, GUI_GUIDE, SUPABASE_SETUP,
                          TROUBLESHOOTING, TESTING, IMPLEMENTATION_PLAN
@@ -119,6 +121,16 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"   # paste as WHITE_
 | `WHITE_ALLOW_PRIVATE_TARGETS` | Development only: allow private IPs in the GUI | `false` |
 
 Check with `white config` and `white doctor`.
+
+## Try it without owning a website
+
+`demo-site/` contains a small fictional website you run on your own computer, with a "weak" and a
+"hardened" configuration. See [demo-site/README.md](demo-site/README.md):
+
+```powershell
+python demo-site\serve.py                                                  # window 1
+white scan http://127.0.0.1:8443/ --authorized --allow-private-network     # window 2
+```
 
 ## Running the GUI
 
@@ -186,7 +198,7 @@ pytest
 ruff check src tests
 ```
 
-161 automated tests (scanner, SSRF protections, reports, CLI, GUI, authentication, session handling,
+171 automated tests (scanner, SSRF protections, reports, CLI, GUI, authentication, session handling,
 cross-user isolation). Details and limits of coverage: [docs/TESTING.md](docs/TESTING.md).
 
 ## Troubleshooting
@@ -199,6 +211,13 @@ See [docs/SECURITY.md](docs/SECURITY.md). Key limitations: URL-only, unauthentic
 assessment; in-process job queue and rate limits suited to a single local server; the GUI is not
 production-hosted by default. Before hosting any scanning service, check the provider's terms and
 acceptable-use policy.
+
+## Deploying on Vercel (free)
+
+WHITE runs on Vercel's free Hobby plan in an automatic serverless mode (encrypted cookie sessions,
+signed domain verification in Supabase, scans run inside the request, accounts required). Follow
+[docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md), including the hosting rules it lists (Hobby is
+non-commercial; do not scan Vercel Hobby sites).
 
 ## Uploading to GitHub safely
 

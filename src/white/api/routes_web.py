@@ -8,6 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
+from white.api import scans as scan_ops
 from white.api.deps import CurrentUser, optional_user, require_user, services, verify_csrf
 from white.api.routes_api import report_response
 from white.api.scans import (
@@ -78,7 +79,7 @@ def dashboard(
 def _new_scan_context(request: Request, user: CurrentUser, **extra) -> dict:
     svc = services(request)
     verified = (
-        [d for d in svc.domains.list(user.id) if d.verified_at]
+        [d for d in svc.domains_for(user).list(user.id) if d.verified_at]
         if svc.settings.domain_verification_required
         else []
     )
@@ -213,8 +214,8 @@ def download(
 
 @router.post("/scans/{scan_id}/cancel", dependencies=[Depends(verify_csrf)])
 def cancel(scan_id: str, request: Request, user: CurrentUser = Depends(require_user)) -> Response:
-    _record_or_404(request, user, scan_id)
-    services(request).jobs.cancel(scan_id, user.id)
+    record = _record_or_404(request, user, scan_id)
+    scan_ops.cancel_scan(services(request), user, record)
     return RedirectResponse(f"/scans/{scan_id}?msg=scan_cancelled", status_code=303)
 
 
@@ -225,6 +226,7 @@ def delete(scan_id: str, request: Request, user: CurrentUser = Depends(require_u
     job = svc.jobs.get(scan_id, user.id)
     if job is not None and job.state.value in {"queued", "running"}:
         raise HTTPException(status_code=409, detail="Cancel the scan before deleting it.")
+    scan_ops.prepare_delete(svc, user, record)
     if not svc.repo_for(user).delete_scan(user.id, record.id):
         raise HTTPException(status_code=409, detail="The scan could not be deleted.")
     return RedirectResponse("/history?msg=scan_deleted", status_code=303)
@@ -237,8 +239,8 @@ def history(request: Request, user: CurrentUser = Depends(require_user)) -> Resp
     rows = []
     for r in records:
         state = r.state.value
-        if state in {"queued", "running"} and svc.jobs.get(r.id, user.id) is None:
-            state = "interrupted"
+        if state in {"queued", "running"}:
+            state = scan_ops.status_payload(svc, user, r)["state"]
         rows.append({"record": r, "state": state})
     return render(request, "history.html", {"user": user, "rows": rows, "active": "history"})
 
@@ -276,7 +278,7 @@ def domains_page(request: Request, user: CurrentUser = Depends(require_user)) ->
         {
             "user": user,
             "active": "domains",
-            "domains": svc.domains.list(user.id),
+            "domains": svc.domains_for(user).list(user.id),
             "error": None,
             "file_path": domain_service.FILE_PATH,
         },
@@ -298,24 +300,24 @@ def add_domain(
                 "user": user,
                 "active": "domains",
                 "error": str(exc),
-                "domains": svc.domains.list(user.id),
+                "domains": svc.domains_for(user).list(user.id),
                 "file_path": domain_service.FILE_PATH,
             },
             status_code=400,
         )
-    if len(svc.domains.list(user.id)) >= 50:
+    if len(svc.domains_for(user).list(user.id)) >= 50:
         raise HTTPException(status_code=429, detail="Domain limit reached.")
-    svc.domains.add(user.id, host)
+    svc.domains_for(user).add(user.id, host)
     return RedirectResponse("/domains?msg=domain_added", status_code=303)
 
 
 @router.post("/domains/{domain_id}/verify", dependencies=[Depends(verify_csrf)])
 def verify_domain(domain_id: str, request: Request, user: CurrentUser = Depends(require_user)) -> Response:
     svc = services(request)
-    record = svc.domains.get(user.id, domain_id)
+    record = svc.domains_for(user).get(user.id, domain_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Domain not found.")
-    method = domain_service.verify(svc.domains, record, svc.settings.scan_config())
+    method = domain_service.verify(svc.domains_for(user), record, svc.settings.scan_config())
     return RedirectResponse(
         f"/domains?msg={'domain_verified' if method else 'domain_not_verified'}", status_code=303
     )
@@ -323,6 +325,6 @@ def verify_domain(domain_id: str, request: Request, user: CurrentUser = Depends(
 
 @router.post("/domains/{domain_id}/delete", dependencies=[Depends(verify_csrf)])
 def delete_domain(domain_id: str, request: Request, user: CurrentUser = Depends(require_user)) -> Response:
-    if not services(request).domains.delete(user.id, domain_id):
+    if not services(request).domains_for(user).delete(user.id, domain_id):
         raise HTTPException(status_code=404, detail="Domain not found.")
     return RedirectResponse("/domains?msg=domain_deleted", status_code=303)

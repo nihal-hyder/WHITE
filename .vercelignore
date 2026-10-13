@@ -1,0 +1,16 @@
+# Never upload secrets or local data
+.env
+.env.*
+!.env.example
+*.db
+.white/
+# Not needed by the deployed app
+.venv/
+venv/
+tests/
+demo-site/
+docs/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+.claude/

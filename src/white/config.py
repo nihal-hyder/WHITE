@@ -7,10 +7,11 @@ settings used by the web application (sessions, Supabase, persistence).
 from __future__ import annotations
 
 import secrets
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from white.scanner.models import ScanConfig
@@ -28,7 +29,7 @@ class Settings(BaseSettings):
 
     # --- Web application ---
     secret_key: str | None = Field(default=None, validation_alias="WHITE_SECRET_KEY")
-    site_url: str = Field(default="http://127.0.0.1:8000", validation_alias="WHITE_SITE_URL")
+    site_url: str = Field(default="", validation_alias="WHITE_SITE_URL")
     data_dir: Path = Field(default=Path.home() / ".white", validation_alias="WHITE_DATA_DIR")
     cookie_secure: bool | None = Field(default=None, validation_alias="WHITE_COOKIE_SECURE")
     require_domain_verification: bool | None = Field(
@@ -38,6 +39,16 @@ class Settings(BaseSettings):
     scans_per_user_per_hour: int = Field(
         default=20, ge=1, le=500, validation_alias="WHITE_SCANS_PER_USER_PER_HOUR"
     )
+
+    # --- Hosting ---
+    # Serverless mode (auto-enabled on Vercel): no local disk state, scans run inside the request,
+    # sessions live in encrypted cookies and domain verifications in Supabase.
+    serverless: bool | None = Field(default=None, validation_alias="WHITE_SERVERLESS")
+    trust_proxy_headers: bool | None = Field(default=None, validation_alias="WHITE_TRUST_PROXY_HEADERS")
+    vercel: str | None = Field(default=None, validation_alias="VERCEL")
+    vercel_url: str | None = Field(default=None, validation_alias="VERCEL_URL")
+    vercel_branch_url: str | None = Field(default=None, validation_alias="VERCEL_BRANCH_URL")
+    vercel_production_url: str | None = Field(default=None, validation_alias="VERCEL_PROJECT_PRODUCTION_URL")
 
     # --- Scanner safety limits ---
     allow_private_targets: bool = Field(default=False, validation_alias="WHITE_ALLOW_PRIVATE_TARGETS")
@@ -63,6 +74,60 @@ class Settings(BaseSettings):
             raise ValueError("SUPABASE_URL must start with https://")
         return value.rstrip("/")
 
+    @model_validator(mode="after")
+    def _derive_hosting(self) -> Settings:
+        if not self.site_url:
+            if self.vercel_production_url:
+                self.site_url = f"https://{self.vercel_production_url}"
+            elif self.vercel_url:
+                self.site_url = f"https://{self.vercel_url}"
+            else:
+                self.site_url = "http://127.0.0.1:8000"
+        self.site_url = self.site_url.rstrip("/")
+        if (
+            self.is_serverless
+            and "WHITE_DATA_DIR" not in self.model_fields_set
+            and "data_dir" not in self.model_fields_set
+        ):
+            self.data_dir = Path(tempfile.gettempdir()) / "white"  # writable scratch only; no durable state
+        return self
+
+    @property
+    def is_serverless(self) -> bool:
+        if self.serverless is not None:
+            return self.serverless
+        return self.vercel == "1"
+
+    @property
+    def proxy_headers_trusted(self) -> bool:
+        if self.trust_proxy_headers is not None:
+            return self.trust_proxy_headers
+        return self.vercel == "1"
+
+    @property
+    def execution_mode(self) -> str:
+        """'background' (in-process worker threads) or 'inline' (scan runs inside a request)."""
+        return "inline" if self.is_serverless else "background"
+
+    @property
+    def deployment_hosts(self) -> list[str]:
+        return [h for h in (self.vercel_url, self.vercel_branch_url, self.vercel_production_url) if h]
+
+    def configuration_problems(self) -> list[str]:
+        """Settings that make a hosted (serverless) deployment unsafe or unusable."""
+        problems = []
+        if self.is_serverless:
+            if not self.supabase_enabled:
+                problems.append(
+                    "SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY must be set: a hosted WHITE "
+                    "requires accounts so it can never act as an open scanner."
+                )
+            if not self.secret_key or len(self.secret_key) < 32:
+                problems.append("WHITE_SECRET_KEY must be set to a random value of at least 32 characters.")
+            if self.allow_private_targets:
+                problems.append("WHITE_ALLOW_PRIVATE_TARGETS must not be enabled on a hosted deployment.")
+        return problems
+
     @property
     def supabase_enabled(self) -> bool:
         return bool(self.supabase_url and self.supabase_publishable_key)
@@ -73,6 +138,8 @@ class Settings(BaseSettings):
 
     @property
     def domain_verification_required(self) -> bool:
+        if self.is_serverless:
+            return True  # never optional on a publicly hosted deployment
         if self.require_domain_verification is not None:
             return self.require_domain_verification
         # Multi-user (hosted) mode requires proof of ownership by default.

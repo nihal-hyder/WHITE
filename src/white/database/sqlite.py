@@ -56,6 +56,12 @@ SCHEMA = [
         UNIQUE (owner_id, hostname)
     );
     """,
+    # version 2: inline execution support
+    """
+    ALTER TABLE scans ADD COLUMN started_at TEXT;
+    ALTER TABLE scans ADD COLUMN progress TEXT;
+    ALTER TABLE scans ADD COLUMN cancel_requested INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 
@@ -165,6 +171,9 @@ class SQLiteScanRepository:
             high_priority=row["high_priority"],
             error=row["error"],
             report=report,
+            started_at=_dt(row["started_at"]),
+            progress=json.loads(row["progress"]) if row["progress"] else None,
+            cancel_requested=bool(row["cancel_requested"]),
         )
 
     def get_scan(self, owner_id: str, scan_id: str) -> ScanRecord | None:
@@ -178,7 +187,8 @@ class SQLiteScanRepository:
         with self.db.connect() as conn:
             rows = conn.execute(
                 "SELECT id, owner_id, target_url, hostname, state, active_checks, created_at, finished_at,"
-                " findings_total, high_priority, error, NULL AS report_json FROM scans"
+                " findings_total, high_priority, error, started_at, progress, cancel_requested,"
+                " NULL AS report_json FROM scans"
                 " WHERE owner_id = ? ORDER BY created_at DESC LIMIT ?",
                 (owner_id, limit),
             ).fetchall()
@@ -203,6 +213,38 @@ class SQLiteScanRepository:
                 (scan_id, owner_id),
             )
         return cur.rowcount == 1
+
+    def claim_scan(self, owner_id: str, scan_id: str) -> bool:
+        with self.db.connect() as conn:
+            cur = conn.execute(
+                "UPDATE scans SET state = 'running', started_at = ? WHERE id = ? AND owner_id = ? AND state = 'queued'",
+                (_iso(datetime.now(UTC)), scan_id, owner_id),
+            )
+        return cur.rowcount == 1
+
+    def update_progress(self, owner_id: str, scan_id: str, progress: dict) -> None:
+        with self.db.connect() as conn:
+            conn.execute(
+                "UPDATE scans SET progress = ? WHERE id = ? AND owner_id = ?",
+                (json.dumps(progress), scan_id, owner_id),
+            )
+
+    def request_cancel(self, owner_id: str, scan_id: str) -> bool:
+        with self.db.connect() as conn:
+            cur = conn.execute(
+                "UPDATE scans SET cancel_requested = 1 WHERE id = ? AND owner_id = ? AND state IN ('queued','running')",
+                (scan_id, owner_id),
+            )
+        return cur.rowcount == 1
+
+    def count_scans_since(self, owner_id: str, since: datetime, states: set[str] | None = None) -> int:
+        query = "SELECT COUNT(*) FROM scans WHERE owner_id = ? AND created_at >= ?"
+        params: list = [owner_id, _iso(since)]
+        if states:
+            query += f" AND state IN ({','.join('?' for _ in states)})"
+            params.extend(sorted(states))
+        with self.db.connect() as conn:
+            return int(conn.execute(query, params).fetchone()[0])
 
     def mark_interrupted(self) -> int:
         """Called at startup: scans that were running when the server stopped did not finish."""

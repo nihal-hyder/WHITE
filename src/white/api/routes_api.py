@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from white import __version__
+from white.api import scans as scan_ops
 from white.api.deps import CurrentUser, require_api_user, services, verify_csrf
 from white.api.scans import (
     ScanRequestError,
@@ -111,10 +112,22 @@ def scan_findings(
     return [f.model_dump(mode="json") for f in record.report.findings]
 
 
+@router.post("/scans/{scan_id}/run", dependencies=[Depends(verify_csrf)])
+def run_scan(scan_id: str, request: Request, user: CurrentUser = Depends(require_api_user)):
+    """Serverless mode: execute a queued scan inside this request (up to the scan time limit)."""
+    svc = services(request)
+    if svc.settings.execution_mode != "inline":
+        raise HTTPException(status_code=409, detail="Scans run automatically on this server.")
+    try:
+        return scan_ops.run_scan_inline(svc, user, scan_id)
+    except ScanRequestError as exc:
+        return JSONResponse({"detail": str(exc), "code": exc.code}, status_code=exc.status_code)
+
+
 @router.post("/scans/{scan_id}/cancel", dependencies=[Depends(verify_csrf)])
 def cancel_scan(scan_id: str, request: Request, user: CurrentUser = Depends(require_api_user)) -> dict:
-    _record_or_404(request, user, scan_id)
-    if not services(request).jobs.cancel(scan_id, user.id):
+    record = _record_or_404(request, user, scan_id)
+    if not scan_ops.cancel_scan(services(request), user, record):
         raise HTTPException(status_code=409, detail="This scan is not running.")
     return {"cancelling": True}
 
@@ -124,6 +137,7 @@ def delete_scan(scan_id: str, request: Request, user: CurrentUser = Depends(requ
     record = _record_or_404(request, user, scan_id)
     if record.state not in FINISHED_STATES and services(request).jobs.get(scan_id, user.id):
         raise HTTPException(status_code=409, detail="Cancel the scan before deleting it.")
+    scan_ops.prepare_delete(services(request), user, record)
     if not services(request).repo_for(user).delete_scan(user.id, scan_id):
         raise HTTPException(status_code=409, detail="The scan could not be deleted.")
     return {"deleted": True}

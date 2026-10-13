@@ -4,7 +4,7 @@
 <div class="medium">
   <div class="page-head"><div><h1>Scan of {{ record.hostname }}</h1>
     <p class="mono">{{ record.target_url }}</p></div></div>
-  <section class="panel" id="scan-progress" data-scan-id="{{ record.id }}" aria-live="polite">
+  <section class="panel" id="scan-progress" data-scan-id="{{ record.id }}" data-run="{{ 'yes' if status.run_required else '' }}" aria-live="polite">
     <dl class="kv">
       <dt>Status</dt><dd><span id="progress-state" class="st st-{{ status.state }}">{{ status.state|replace('_', ' ') }}</span></dd>
       <dt>Current stage</dt><dd id="progress-stage">{{ status.stage }}</dd>

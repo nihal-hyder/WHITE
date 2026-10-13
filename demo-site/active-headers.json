@@ -1,0 +1,18 @@
+{
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Set-Cookie",
+          "value": "session_id=demo-not-a-real-session; Path=/"
+        },
+        {
+          "key": "X-Powered-By",
+          "value": "PHP/7.4.3"
+        }
+      ]
+    }
+  ],
+  "server_header": "SimpleHTTP/0.6 Python/3.13"
+}

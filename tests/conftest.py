@@ -113,7 +113,7 @@ class FakeSupabase:
         self.access: dict[str, tuple[str, float]] = {}
         self.refresh: dict[str, str] = {}
         self.token_hashes: dict[str, tuple[str, str]] = {}
-        self.tables: dict[str, list[dict]] = {"scans": [], "findings": []}
+        self.tables: dict[str, list[dict]] = {"scans": [], "findings": [], "verified_domains": []}
         self.calls: list[str] = []
         self.access_ttl = 3600
 
@@ -237,6 +237,15 @@ class FakeSupabase:
                 return False
             if raw.startswith("not.in.(") and row.get(key) in raw[8:-1].split(","):
                 return False
+            if raw.startswith("in.(") and row.get(key) not in raw[4:-1].split(","):
+                return False
+            if raw.startswith("gte."):
+                from datetime import datetime
+
+                if row.get(key) is None or datetime.fromisoformat(str(row[key])) < datetime.fromisoformat(
+                    raw[4:]
+                ):
+                    return False
         return True
 
     def _rest(self, request, table, query, body) -> httpx.Response:
@@ -255,6 +264,8 @@ class FakeSupabase:
                 ):
                     return httpx.Response(403, json={"message": "row-level security"})
             rows.extend(dict(i) for i in items)
+            if "return=representation" in request.headers.get("prefer", ""):
+                return httpx.Response(201, json=[dict(i) for i in items])
             return httpx.Response(201)
         matched = [r for r in visible if self._matches(r, query)]
         if request.method == "GET":

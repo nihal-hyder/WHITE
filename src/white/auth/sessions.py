@@ -11,6 +11,7 @@ import hashlib
 import json
 import secrets
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -124,3 +125,116 @@ class SessionStore:
                 " OR (purpose = 'recovery' AND (? - created_at) > ?)",
                 (now, ABSOLUTE_LIFETIME, now, IDLE_TIMEOUT, now, RECOVERY_LIFETIME),
             )
+
+
+# ----------------------------------------------------------------------------- serverless sessions
+# A request-scoped holder lets the session store hand a refreshed cookie value to the middleware,
+# which writes it on the response. Context variables are copied into FastAPI's worker threads,
+# but the holder dict is shared by reference, so updates made in an endpoint are visible here.
+PENDING_SESSION_COOKIE: ContextVar[dict | None] = ContextVar("white_pending_session_cookie", default=None)
+COOKIE_MAX_BYTES = 3800
+
+
+class CookieSessionStore:
+    """Stateless sessions for serverless hosting: the encrypted session lives in the cookie.
+
+    The cookie is encrypted and authenticated with a key derived from WHITE_SECRET_KEY (Fernet),
+    so it cannot be read or forged by the browser. Because nothing is stored server-side,
+    revocation relies on Supabase: signing out revokes the Supabase session, and every request
+    re-validates the access token with Supabase Auth (see ``Services.session_still_valid``).
+    """
+
+    stateless = True
+
+    def __init__(self, secret: str) -> None:
+        key = base64.urlsafe_b64encode(hashlib.sha256(("white-cookie-session:" + secret).encode()).digest())
+        self._fernet = Fernet(key)
+        self._recent: dict[str, str] = {}
+
+    def _encode(self, data: dict) -> str:
+        token = self._fernet.encrypt(json.dumps(data, separators=(",", ":")).encode()).decode()
+        if len(token) > COOKIE_MAX_BYTES:
+            raise ValueError("session cookie too large")
+        return token
+
+    def _remember(self, token: str) -> str:
+        id_hash = _hash(token)
+        if len(self._recent) > 2000:
+            self._recent.clear()
+        self._recent[id_hash] = token
+        return id_hash
+
+    def create(self, auth: AuthSession, purpose: str = "login") -> str:
+        now = int(time.time())
+        return self._encode(
+            {
+                "u": auth.user_id,
+                "e": auth.email,
+                "a": auth.access_token,
+                "r": auth.refresh_token,
+                "x": auth.expires_at,
+                "c": now,
+                "p": purpose,
+            }
+        )
+
+    def get(self, token: str | None) -> SessionData | None:
+        if not token or len(token) > COOKIE_MAX_BYTES:
+            return None
+        try:
+            raw = self._fernet.decrypt(token.encode())
+            data = json.loads(raw)
+        except (InvalidToken, ValueError):
+            return None
+        lifetime = RECOVERY_LIFETIME if data.get("p") == "recovery" else ABSOLUTE_LIFETIME
+        if int(time.time()) - int(data.get("c", 0)) > lifetime:
+            return None
+        return SessionData(
+            id_hash=self._remember(token),
+            user_id=data["u"],
+            email=data["e"],
+            access_token=data["a"],
+            refresh_token=data["r"],
+            access_expires_at=int(data["x"]),
+            created_at=int(data["c"]),
+            purpose=data.get("p", "login"),
+        )
+
+    def get_by_hash(self, id_hash: str) -> SessionData | None:
+        token = self._recent.get(id_hash)
+        return self.get(token) if token else None
+
+    def update_tokens(self, id_hash: str, auth: AuthSession) -> None:
+        current = self.get_by_hash(id_hash)
+        if current is None:
+            return
+        token = self._encode(
+            {
+                "u": auth.user_id,
+                "e": auth.email,
+                "a": auth.access_token,
+                "r": auth.refresh_token,
+                "x": auth.expires_at,
+                "c": current.created_at,
+                "p": current.purpose,
+            }
+        )
+        self._recent[id_hash] = token  # later lookups in this request see the new tokens
+        holder = PENDING_SESSION_COOKIE.get()
+        if holder is not None:
+            holder["value"] = token
+
+    def delete(self, token: str | None) -> None:
+        """Nothing is stored server-side; the route clears the cookie and Supabase revokes."""
+
+    def delete_hash(self, id_hash: str) -> None:
+        self._recent.pop(id_hash, None)
+        holder = PENDING_SESSION_COOKIE.get()
+        if holder is not None:
+            holder["clear"] = True
+
+    def delete_user_sessions(self, user_id: str) -> None:
+        """Global revocation is performed by Supabase (sign-out with scope=global)."""
+
+    def purge_expired(self) -> None:
+        """Nothing to purge."""

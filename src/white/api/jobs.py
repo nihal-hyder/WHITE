@@ -82,7 +82,7 @@ class JobManager:
         self._history: dict[str, deque[float]] = defaultdict(deque)
         self._recent: dict[tuple[str, str], float] = {}
         self._lock = threading.Lock()
-        self._scanner_factory = scanner_factory or (lambda config: Scanner(config))
+        self.scanner_factory = scanner_factory or (lambda config: Scanner(config))
 
     def get(self, scan_id: str, owner_id: str) -> Job | None:
         job = self._jobs.get(scan_id)
@@ -148,7 +148,7 @@ class JobManager:
             job.stage, job.completed, job.total = p.stage, p.completed, p.total
 
         try:
-            scanner = self._scanner_factory(config)
+            scanner = self.scanner_factory(config)
             job.total = len(scanner.checks)
             report = scanner.run(
                 job.target_url, scan_id=job.scan_id, progress=progress, cancel_event=job.cancel_event
