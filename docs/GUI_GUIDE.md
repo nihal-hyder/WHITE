@@ -19,7 +19,7 @@ Start the GUI with `white serve` and open <http://127.0.0.1:8000>.
 | Forgot / reset password | `/forgot-password`, `/reset-password` | Email link, then choose a new password. |
 | Dashboard | `/dashboard` | Executive overview of the most recent completed scan of a chosen website. |
 | New scan | `/scans/new` | URL, authorization confirmation, optional active checks, list of checks. |
-| Scan progress | `/scans/{id}` while running | Real status, current stage, completed/total checks, elapsed time, cancel. |
+| Scan progress | `/scans/{id}` while running | Animated live view: a progress ring with a radar sweep, a checklist of all checks that tick off as they complete (the current one spinning), the current stage, a ticking elapsed timer, and cancel. All values are the real job status; the page reloads into the report when the scan finishes. |
 | Report | `/scans/{id}` when finished | Summary, severity cards, charts, next steps, findings grouped by severity, check coverage, limitations, downloads (PDF/JSON/HTML), delete. |
 | Finding details | `/scans/{id}/findings/{finding}` | What was detected, why it matters, what to do, severity and confidence, evidence, technical details. |
 | Scan history | `/history` | All your scans with dates, statuses and finding counts. |
