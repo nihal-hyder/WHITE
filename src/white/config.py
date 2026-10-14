@@ -50,6 +50,18 @@ class Settings(BaseSettings):
     vercel_branch_url: str | None = Field(default=None, validation_alias="VERCEL_BRANCH_URL")
     vercel_production_url: str | None = Field(default=None, validation_alias="VERCEL_PROJECT_PRODUCTION_URL")
 
+    # --- Operator admin console (separate from per-user accounts) ---
+    admin_user: str = Field(default="nihal", validation_alias="WHITE_ADMIN_USER")
+    admin_password: str = Field(default="nihal", validation_alias="WHITE_ADMIN_PASSWORD")
+    admin_password_hash: str | None = Field(default=None, validation_alias="WHITE_ADMIN_PASSWORD_HASH")
+    admin_enabled_opt: bool | None = Field(default=None, validation_alias="WHITE_ADMIN_ENABLED")
+    # Optional Supabase service-role key: ONLY used server-side by the admin console to list all
+    # registered users and their scans. Never sent to the browser, never required.
+    supabase_service_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("WHITE_SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
+    )
+
     # --- Scanner safety limits ---
     allow_private_targets: bool = Field(default=False, validation_alias="WHITE_ALLOW_PRIVATE_TARGETS")
     request_timeout: float = Field(default=10.0, gt=0, le=60, validation_alias="WHITE_REQUEST_TIMEOUT")
@@ -58,7 +70,14 @@ class Settings(BaseSettings):
         default=2_000_000, ge=10_000, le=20_000_000, validation_alias="WHITE_MAX_RESPONSE_BYTES"
     )
 
-    @field_validator("supabase_url", "supabase_publishable_key", "secret_key", mode="before")
+    @field_validator(
+        "supabase_url",
+        "supabase_publishable_key",
+        "secret_key",
+        "admin_password_hash",
+        "supabase_service_key",
+        mode="before",
+    )
     @classmethod
     def _blank_to_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
@@ -144,6 +163,26 @@ class Settings(BaseSettings):
             return self.require_domain_verification
         # Multi-user (hosted) mode requires proof of ownership by default.
         return self.supabase_enabled
+
+    @property
+    def admin_enabled(self) -> bool:
+        """Whether the /admin operator console is reachable."""
+        if self.admin_enabled_opt is not None:
+            return self.admin_enabled_opt
+        # On a public (serverless) deployment, only enable it when a real password hash is set,
+        # so the weak default credentials are never exposed to the internet.
+        if self.is_serverless:
+            return bool(self.admin_password_hash)
+        return True
+
+    @property
+    def admin_uses_default_password(self) -> bool:
+        return self.admin_password_hash is None
+
+    @property
+    def admin_cross_user(self) -> bool:
+        """Whether the admin console can list all registered users and their scans (Supabase)."""
+        return bool(self.supabase_enabled and self.supabase_service_key)
 
     @property
     def secure_cookies(self) -> bool:

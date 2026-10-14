@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <title>Operator console — WHITE</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <link rel="icon" href="{{ url_for('static', path='img/favicon.svg') }}" type="image/svg+xml">
+</head>
+<body class="admin-body">
+  <header class="admin-topbar">
+    <div class="admin-brand">WH<span class="i">I</span>TE <span class="admin-tag">Operator console</span></div>
+    <div class="admin-topbar-actions">
+      <a href="/" class="small">Open WHITE</a>
+      <form method="post" action="/admin/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <button type="submit" class="btn btn-secondary">Sign out</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="admin-main-wrap">
+    <div class="page-head"><div>
+      <h1>Overview</h1>
+      <p class="muted">
+        {% if data.source == 'supabase' %}Live data from your Supabase project.
+        {% else %}Showing scans stored on this computer.{% endif %}
+      </p>
+    </div></div>
+
+    {% if data.error %}<div class="alert alert-error">{{ data.error }}</div>{% endif %}
+    {% if data.default_password %}
+    <div class="alert alert-warn">The admin console is using the <strong>default password</strong>.
+      For anything beyond local use, set a strong one with <code>WHITE_ADMIN_PASSWORD_HASH</code>.</div>
+    {% endif %}
+    {% if not data.cross_user %}
+    <div class="alert alert-info">Registered-user data (emails, sign-ups) requires Supabase accounts
+      and a service key. Run the GUI with Supabase configured and set <code>WHITE_SUPABASE_SERVICE_KEY</code>
+      to see every user here. Right now this shows the scans stored locally.</div>
+    {% endif %}
+
+    {% set m = data.metrics %}
+    <section class="grid grid-4" aria-label="Key figures">
+      <div class="panel"><div class="stat-label">Registered users</div>
+        <div class="stat-value">{{ m.users_total }}</div>
+        <div class="stat-note">{{ m.users_confirmed }} confirmed · {{ m.users_new_7d }} new this week</div></div>
+      <div class="panel"><div class="stat-label">Total scans</div>
+        <div class="stat-value">{{ m.scans_total }}</div>
+        <div class="stat-note">{{ m.scans_7d }} in the last 7 days</div></div>
+      <div class="panel"><div class="stat-label">Findings recorded</div>
+        <div class="stat-value">{{ m.findings_total }}</div>
+        <div class="stat-note">across all scans</div></div>
+      <div class="panel"><div class="stat-label">High-priority findings</div>
+        <div class="stat-value">{{ m.high_priority_total }}</div>
+        <div class="stat-note">critical + high severity</div></div>
+    </section>
+
+    {% if data.cross_user %}
+    <section class="panel mt-24">
+      <div class="panel-head"><h2>Registered users</h2><span class="muted small">{{ data.users|length }} total</span></div>
+      {% if data.users %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Email</th><th>Signed up</th><th>Last sign-in</th><th>Confirmed</th><th>Scans</th><th>Last scan</th></tr></thead>
+        <tbody>
+        {% for u in data.users %}
+          <tr>
+            <td><strong>{{ u.email }}</strong></td>
+            <td>{{ u.created_at|dt }}</td>
+            <td>{{ u.last_sign_in_at|dt }}</td>
+            <td>{% if u.confirmed %}<span class="st st-PASS">Yes</span>{% else %}<span class="st st-POTENTIAL">Pending</span>{% endif %}</td>
+            <td>{{ u.scan_count }}</td>
+            <td>{{ u.last_scan|dt }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<div class="empty">No users have registered yet.</div>{% endif %}
+    </section>
+    {% endif %}
+
+    <section class="panel mt-24">
+      <div class="panel-head"><h2>Recent scans</h2><span class="muted small">{{ data.scans|length }} shown</span></div>
+      {% if data.scans %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>User</th><th>Target</th><th>Status</th><th>Findings</th><th>High-priority</th><th>When</th></tr></thead>
+        <tbody>
+        {% for s in data.scans %}
+          <tr>
+            <td>{{ s.email }}</td>
+            <td><strong>{{ s.hostname }}</strong><div class="small muted mono">{{ s.target_url }}</div></td>
+            <td><span class="st st-{{ s.state }}">{{ s.state|replace('_', ' ') }}</span></td>
+            <td>{% if s.state in ['completed', 'completed_with_errors'] %}{{ s.findings_total }}{% else %}-{% endif %}</td>
+            <td>{% if s.state in ['completed', 'completed_with_errors'] %}{{ s.high_priority }}{% else %}-{% endif %}</td>
+            <td>{{ s.created_at|dt }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<div class="empty">No scans yet.</div>{% endif %}
+    </section>
+
+    <p class="small muted mt-24">Operator console · WHITE {{ app_version }} · read-only.
+      Data source: {{ data.source }}.</p>
+  </main>
+</body>
+</html>

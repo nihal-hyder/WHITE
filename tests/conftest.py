@@ -98,6 +98,7 @@ def _isolated_env(monkeypatch, tmp_path):
 # ----------------------------------------------------------------------------- fake Supabase
 FAKE_URL = "https://fake-project.supabase.co"
 FAKE_KEY = "sb_publishable_test_key"
+FAKE_SERVICE_KEY = "sb_secret_fake_service_key"
 
 
 class FakeSupabase:
@@ -151,19 +152,39 @@ class FakeSupabase:
         return httpx.Response(status, json={"code": status, "error_code": code, "msg": msg})
 
     def handler(self, request: httpx.Request) -> httpx.Response:
-        assert request.headers.get("apikey") == FAKE_KEY
+        apikey = request.headers.get("apikey")
+        assert apikey in (FAKE_KEY, FAKE_SERVICE_KEY)
+        service = apikey == FAKE_SERVICE_KEY
         parts = urlsplit(str(request.url))
         path = parts.path
         query = {k: v[0] for k, v in parse_qs(parts.query).items()}
         body = json.loads(request.content) if request.content else None
         self.calls.append(f"{request.method} {path}")
         if path.startswith("/auth/v1/"):
-            return self._auth(request, path.removeprefix("/auth/v1/"), query, body)
+            return self._auth(request, path.removeprefix("/auth/v1/"), query, body, service)
         if path.startswith("/rest/v1/"):
-            return self._rest(request, path.removeprefix("/rest/v1/"), query, body)
+            return self._rest(request, path.removeprefix("/rest/v1/"), query, body, service)
         return httpx.Response(404)
 
-    def _auth(self, request, path, query, body) -> httpx.Response:
+    def _auth(self, request, path, query, body, service=False) -> httpx.Response:
+        if path == "admin/users" and request.method == "GET":
+            if not service:
+                return self._error(403, "not_admin")
+            return httpx.Response(
+                200,
+                json={
+                    "users": [
+                        {
+                            "id": u["id"],
+                            "email": u["email"],
+                            "created_at": "2026-10-01T00:00:00+00:00",
+                            "last_sign_in_at": "2026-10-10T00:00:00+00:00",
+                            "email_confirmed_at": "2026-10-01T00:00:00+00:00" if u["confirmed"] else None,
+                        }
+                        for u in self.users.values()
+                    ]
+                },
+            )
         if path == "signup":
             if body["email"] in self.users:
                 if self.confirm_email:  # enumeration-safe obfuscated response
@@ -248,11 +269,19 @@ class FakeSupabase:
                     return False
         return True
 
-    def _rest(self, request, table, query, body) -> httpx.Response:
+    def _rest(self, request, table, query, body, service=False) -> httpx.Response:
+        rows = self.tables[table]
+        if service:  # service role bypasses row-level security
+            if request.method == "GET":
+                matched = [r for r in rows if self._matches(r, query)]
+                matched.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+                if "limit" in query:
+                    matched = matched[: int(query["limit"])]
+                return httpx.Response(200, json=matched)
+            return httpx.Response(405)
         uid = self._auth_uid(request)
         if uid is None:
             return httpx.Response(401, json={"message": "JWT expired"})
-        rows = self.tables[table]
         visible = [r for r in rows if r["user_id"] == uid]  # RLS
         if request.method == "POST":
             items = body if isinstance(body, list) else [body]

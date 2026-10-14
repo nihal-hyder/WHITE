@@ -7,18 +7,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from white import __version__
 from white.api.deps import LoginRequired, Services
 from white.api.jobs import JobManager
 from white.api.security import SecurityMiddleware, csrf_token_for
+from white.auth.admin import AdminAuth
 from white.auth.domains import DomainStore
+from white.auth.passwords import hash_password
 from white.auth.sessions import CookieSessionStore, SessionStore
 from white.auth.supabase_auth import SupabaseAuthClient
 from white.config import Settings, get_settings
@@ -63,6 +66,20 @@ def build_services(settings: Settings) -> Services:
         if settings.supabase_enabled
         else None
     )  # type: ignore[arg-type]
+    admin = None
+    if settings.admin_enabled:
+        digest = settings.admin_password_hash or hash_password(settings.admin_password)
+        admin = AdminAuth(
+            settings.admin_user,
+            digest,
+            settings.effective_secret_key(),
+            default_password=settings.admin_uses_default_password,
+        )
+        if settings.admin_uses_default_password and not settings.is_serverless:
+            log.warning(
+                "Admin console enabled with the default password. Set WHITE_ADMIN_PASSWORD_HASH "
+                "to a strong value for anything beyond local use."
+            )
     services = Services(
         settings=settings,
         db=db,
@@ -75,6 +92,7 @@ def build_services(settings: Settings) -> Services:
         domains=DomainStore(db),
         jobs=JobManager(settings.max_concurrent_scans, settings.scans_per_user_per_hour),
         auth=auth,
+        admin=admin,
     )
     services.sessions.purge_expired()
     return services
@@ -148,6 +166,7 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
         app_version=__version__,
         auth_mode=settings.auth_mode,
         domain_verification=settings.domain_verification_required,
+        admin_enabled=settings.admin_enabled,
         status_labels=STATUS_LABELS,
         category_labels={k.value: v for k, v in CATEGORY_LABELS.items()},
     )
@@ -161,6 +180,23 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
     def wants_json(request: Request) -> bool:
         return request.url.path.startswith("/api/")
 
+    def safe_user(request: Request):
+        """Resolve the signed-in user for the error page's nav, tolerating any failure."""
+        from white.api.deps import optional_user
+
+        try:
+            return optional_user(request)
+        except Exception:  # noqa: BLE001 - never let the error page itself error
+            return None
+
+    def error_page(request: Request, status: int, message: str | None):
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {"status": status, "message": message, "user": safe_user(request)},
+            status_code=status,
+        )
+
     @app.exception_handler(LoginRequired)
     async def login_required(request: Request, exc: LoginRequired):
         if wants_json(request):
@@ -168,16 +204,20 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
         target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
         return RedirectResponse(f"/login?msg={exc.reason}&next={quote(target)}", status_code=303)
 
-    @app.exception_handler(HTTPException)
-    async def http_error(request: Request, exc: HTTPException):
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, exc: StarletteHTTPException):
+        # Catches both route-raised HTTPExceptions and unmatched-URL 404s from routing.
         if wants_json(request):
             return JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers)
-        return templates.TemplateResponse(
-            request,
-            "error.html",
-            {"status": exc.status_code, "message": exc.detail, "user": None},
-            status_code=exc.status_code,
-        )
+        return error_page(request, exc.status_code, exc.detail)
+
+    @app.exception_handler(Exception)
+    async def unhandled_error(request: Request, exc: Exception):
+        # Last resort for an unexpected error: a friendly page, never a stack trace or details.
+        log.exception("unhandled error at %s", request.url.path)
+        if wants_json(request):
+            return JSONResponse({"detail": "An unexpected error occurred."}, status_code=500)
+        return error_page(request, 500, None)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError):
@@ -189,12 +229,7 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
                 },
                 status_code=422,
             )
-        return templates.TemplateResponse(
-            request,
-            "error.html",
-            {"status": 422, "message": "The submitted information was not valid.", "user": None},
-            status_code=422,
-        )
+        return error_page(request, 422, "The submitted information was not valid.")
 
     @app.exception_handler(RepositoryError)
     async def repository_error(request: Request, exc: RepositoryError):
@@ -204,13 +239,13 @@ def create_app(settings: Settings | None = None, services: Services | None = Non
             return RedirectResponse("/login?msg=expired", status_code=303)
         if wants_json(request):
             return JSONResponse({"detail": str(exc)}, status_code=503)
-        return templates.TemplateResponse(
-            request, "error.html", {"status": 503, "message": str(exc), "user": None}, status_code=503
-        )
+        return error_page(request, 503, str(exc))
 
-    from white.api import routes_api, routes_auth, routes_web
+    from white.api import routes_admin, routes_api, routes_auth, routes_web
 
     app.include_router(routes_api.router)
     app.include_router(routes_auth.router)
+    if settings.admin_enabled:
+        app.include_router(routes_admin.router)
     app.include_router(routes_web.router)
     return app

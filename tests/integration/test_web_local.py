@@ -176,3 +176,26 @@ def test_domain_rejects_private_hosts(tmp_path):
     token = csrf(client, "/domains")
     response = client.post("/domains", data={"csrf_token": token, "hostname": "localhost"})
     assert response.status_code == 400
+
+
+def test_custom_error_pages(tmp_path):
+    client = make_client(tmp_path)
+    r = client.get("/no-such-page-here")
+    assert r.status_code == 404
+    assert "text/html" in r.headers["content-type"]
+    assert "Page not found" in r.text and "404" in r.text
+    # API paths still return JSON, not the HTML page
+    j = client.get("/api/no-such-endpoint")
+    assert j.status_code == 404 and j.headers["content-type"].startswith("application/json")
+    # an unexpected server error shows the friendly page without leaking details
+    app = client.app
+
+    @app.get("/_boom_test")
+    def _boom():
+        raise RuntimeError("secret internal detail")
+
+    from fastapi.testclient import TestClient
+
+    safe = TestClient(app, base_url="http://127.0.0.1:8000", raise_server_exceptions=False)
+    r = safe.get("/_boom_test")
+    assert r.status_code == 500 and "Something went wrong" in r.text and "secret internal detail" not in r.text

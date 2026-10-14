@@ -182,6 +182,10 @@ Full options and exit codes: [docs/CLI_GUIDE.md](docs/CLI_GUIDE.md).
 
 GUI downloads: on any report page (PDF / JSON / HTML buttons).
 
+## Operator admin console
+
+Open **`/admin`** and sign in (default **`nihal` / `nihal`**) for an operator view of all registered users, their emails, and every scan run. It is read-only and separate from user accounts; listing registered users needs a Supabase service key. See [docs/GUI_GUIDE.md](docs/GUI_GUIDE.md#operator-admin-console-admin).
+
 ## Dashboard and severity
 
 The dashboard shows overview cards, a severity doughnut, findings by category, progress over time
@@ -200,7 +204,7 @@ pytest
 ruff check src tests
 ```
 
-171 automated tests (scanner, SSRF protections, reports, CLI, GUI, authentication, session handling,
+182 automated tests (scanner, SSRF protections, reports, CLI, GUI, authentication, session handling, operator admin console,
 cross-user isolation). Details and limits of coverage: [docs/TESTING.md](docs/TESTING.md).
 
 ## Troubleshooting

@@ -10,7 +10,7 @@ ruff check src tests      # lint
 ruff format --check src tests
 ```
 
-Last verified run (Windows 11, Python 3.13.7): **171 passed**, ruff clean.
+Last verified run (Windows 11, Python 3.13.7): **182 passed**, ruff clean.
 
 ## What is covered
 

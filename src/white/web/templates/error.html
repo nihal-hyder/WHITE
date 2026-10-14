@@ -1,9 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Error {{ status }}{% endblock %}
+{% set titles = {
+  400: "Bad request", 401: "Please sign in", 403: "Not allowed", 404: "Page not found",
+  422: "Invalid request", 429: "Too many requests", 500: "Something went wrong",
+  502: "Service unavailable", 503: "Temporarily unavailable"
+} %}
+{% set title = titles.get(status, "Something went wrong") %}
+{% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="medium panel">
-  <h1>{% if status == 404 %}Not found{% elif status == 403 %}Not allowed{% elif status == 429 %}Too many requests{% else %}Something went wrong{% endif %}</h1>
-  <p>{{ message }}</p>
-  <p class="actions"><a class="btn btn-secondary" href="/dashboard">Go to dashboard</a></p>
+<div class="error-wrap">
+  <div class="error-code" aria-hidden="true">{{ status }}</div>
+  <h1>{{ title }}</h1>
+  <p class="lede-sm">
+    {% if status == 404 %}We couldn't find the page you were looking for. It may have moved, or the link was mistyped.
+    {% elif status == 403 %}{{ message or "You don't have permission to view this page." }}
+    {% elif status == 429 %}{{ message or "You've made a lot of requests in a short time. Please wait a little and try again." }}
+    {% elif status == 503 %}{{ message or "WHITE is temporarily unavailable. Please try again in a moment." }}
+    {% elif status >= 500 %}An unexpected error occurred on our side. The problem has been noted — please try again.
+    {% else %}{{ message or "The request could not be completed." }}
+    {% endif %}
+  </p>
+  <div class="actions error-actions">
+    <a class="btn" href="/">Back to home</a>
+    {% if user %}<a class="btn btn-secondary" href="/dashboard">Go to dashboard</a>
+    {% else %}<a class="btn btn-secondary" href="/scans/new">Start a scan</a>{% endif %}
+  </div>
+  {% if status == 404 %}
+  <p class="small muted error-hint">Looking for something? Try the
+    <a href="/dashboard">dashboard</a>, <a href="/history">scan history</a>, or
+    <a href="/scans/new">a new scan</a>.</p>
+  {% endif %}
 </div>
 {% endblock %}

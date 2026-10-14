@@ -63,3 +63,29 @@ checks, or assessment incomplete.
   devices the custom cursor and pointer effects are disabled. Without JavaScript all content remains visible.
 - Homepage examples (floating cards, sample finding) are labelled "Example" / "Illustrative example". The
   homepage contains no invented customers, testimonials or usage numbers.
+
+## Operator admin console (`/admin`)
+
+A separate console for the person running WHITE (not the end users). Open **`/admin`** and sign in
+with the operator username and password — default **`nihal` / `nihal`** (change them for anything
+beyond local use). It is gated by its own login and session, independent of user accounts.
+
+It shows:
+
+- **Registered users** — count, emails, sign-up and last-sign-in dates, confirmation status, and how
+  many scans each has run. *This requires Supabase accounts plus a service key (see below).*
+- **All scans** across every user — target, status, findings and high-priority counts, and when.
+- Headline metrics: users, total scans, scans in the last 7 days, findings and high-priority totals.
+
+The console is **read-only**. Configure it with these environment variables (all optional):
+
+| Variable | Purpose |
+| --- | --- |
+| `WHITE_ADMIN_USER` / `WHITE_ADMIN_PASSWORD` | Operator credentials (default `nihal`/`nihal`). |
+| `WHITE_ADMIN_PASSWORD_HASH` | A strong PBKDF2 hash instead of a plaintext password (recommended). Generate with `python -c "from white.auth.passwords import hash_password; print(hash_password('…'))"`. |
+| `WHITE_ADMIN_ENABLED` | Force the console on/off. |
+| `WHITE_SUPABASE_SERVICE_KEY` | Supabase **service-role** key, needed to list registered users and their emails. Used only server-side by `/admin`, never sent to the browser. Without it, the console shows only locally stored scans. |
+
+Safety: the login is rate-limited and the password is stored only as a PBKDF2 hash. On a public
+(serverless) deployment the console is disabled unless you set a real `WHITE_ADMIN_PASSWORD_HASH`,
+so the default credentials can never be exposed to the internet.

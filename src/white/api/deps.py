@@ -42,8 +42,10 @@ class Services:
     domains: DomainStore
     jobs: JobManager
     auth: SupabaseAuthClient | None
+    admin: Any = None  # AdminAuth | None (the operator console credential checker)
     login_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(10, 900))
     email_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(5, 900))
+    admin_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(8, 900))
     supabase_transport: Any = None  # injectable for tests
     _refresh_lock: threading.Lock = field(default_factory=threading.Lock)
     _bearer_cache: dict[str, tuple[float, str, str]] = field(default_factory=dict)

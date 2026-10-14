@@ -87,3 +87,18 @@ Implemented in `src/white/scanner/netsafety.py`:
 ## Reporting a vulnerability in WHITE
 
 Please open a private security advisory on the GitHub repository rather than a public issue.
+
+## Operator admin console
+
+The `/admin` console is for the operator, separate from user accounts:
+
+- Its own credentials (`WHITE_ADMIN_USER`/`WHITE_ADMIN_PASSWORD`, default `nihal`/`nihal`), verified
+  against a PBKDF2-HMAC-SHA256 hash with a constant-time compare. Prefer `WHITE_ADMIN_PASSWORD_HASH`.
+- Its own encrypted, time-limited session cookie (`white_admin`, HttpOnly, path `/admin`), login
+  rate-limiting, and CSRF protection on its forms.
+- Listing all registered users requires the Supabase **service-role** key
+  (`WHITE_SUPABASE_SERVICE_KEY`). It is read from the environment, used only by the admin module
+  server-side, and never rendered to the browser or logged. Without it, the console shows only
+  locally stored scans.
+- On a serverless/hosted deployment the console is disabled unless an explicit
+  `WHITE_ADMIN_PASSWORD_HASH` is set, so the weak default credentials are never exposed publicly.
